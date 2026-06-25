@@ -17,7 +17,7 @@
   a{color:var(--blue)}
 
   /* ---- Settings bar ---- */
-  .settings{position:sticky;top:0;z-index:30;background:var(--panel);border:1px solid var(--line);
+  .settings{background:var(--panel);border:1px solid var(--line);
     border-radius:10px;padding:12px 14px;margin-bottom:14px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
   .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 18px}
   .field{display:flex;flex-direction:column;gap:5px}
@@ -37,9 +37,9 @@
   .status.err{color:var(--red)}
 
   /* ---- Table ---- */
-  .tablewrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .tablewrap{background:var(--panel);border:1px solid var(--line);border-radius:10px}
   table{width:100%;border-collapse:collapse}
-  thead th{position:sticky;top:0;background:var(--panel2);color:var(--gold);text-align:right;
+  thead th{position:sticky;top:0;z-index:10;background:var(--panel2);color:var(--gold);text-align:right;
     padding:11px 12px;font-size:12px;border-bottom:2px solid var(--line);cursor:pointer;white-space:nowrap}
   thead th.left{text-align:left}
   thead th .arrow{opacity:.5;font-size:10px;margin-left:3px}
@@ -74,7 +74,10 @@
   .methods{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
   .method{font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
   .method.win{border-color:var(--green);color:#bfe6c0;background:rgba(76,175,80,.08)}
+  .method.clickable{cursor:pointer;transition:border-color .12s}
+  .method.clickable:hover{border-color:var(--gold)}
   .method .where{color:var(--gold)}
+  .forced{font-size:10px;padding:3px 8px;border-radius:6px;color:var(--gold);border:1px dashed var(--gold);align-self:center}
   .manual-input{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px}
   .manual-input input{width:120px}
   .totals{display:flex;flex-wrap:wrap;gap:18px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
@@ -120,9 +123,9 @@
       <div class="field">
         <label>Ville de fabrication (bonus spécialité +15%)</label>
         <select v-model="s.craftCity">
-          <option value="auto">Auto — chaque recette dans sa ville idéale</option>
+          <option value="auto">Auto (idéale par recette)</option>
           <option v-for="c in CITIES" :key="c" :value="c">{{ c }}</option>
-          <option value="none">Autre ville (aucun bonus spécialité)</option>
+          <option value="none">Autre ville (sans bonus)</option>
         </select>
       </div>
 
@@ -178,6 +181,15 @@
           <option value="all">Tous</option>
           <option v-for="t in [1,2,3,4,5,6,7,8]" :key="t" :value="t">T{{ t }}</option>
         </select>
+      </div>
+
+      <div class="field">
+        <label>Filtrer par enchantement</label>
+        <div class="cities">
+          <label v-for="e in [0,1,2,3]" :key="e">
+            <input type="checkbox" :value="e" v-model="s.enchFilter"> .{{ e }}
+          </label>
+        </div>
       </div>
 
       <div class="field">
@@ -238,7 +250,7 @@
           <tr class="detail" v-if="expanded[r.id]">
             <td colspan="6">
               <div class="detail-box">
-                <p class="detail-title">Décomposition — acheter vs cultiver/fabriquer (le moins cher est surligné)</p>
+                <p class="detail-title">Décomposition — clique une option pour la <b>forcer</b> dans le calcul (sinon le moins cher est utilisé)</p>
                 <div class="ing" v-for="(ing,idx) in r.breakdown" :key="idx">
                   <img class="ing-img" :src="img(ing.id)" loading="lazy" @error="imgErr($event, ing.id)" :alt="ing.name">
                   <div>
@@ -246,10 +258,13 @@
                     <div class="ing-qty">×{{ ing.qty }} par craft<span v-if="ing.excluded"> · non retourné (RRR)</span></div>
                   </div>
                   <div class="methods">
-                    <span v-for="m in ing.options" :key="m.method" class="method" :class="{win:m.method===ing.best}">
+                    <span v-for="m in ing.options" :key="m.method" class="method clickable"
+                      :class="{win:m.method===ing.chosen}"
+                      @click.stop="chooseMethod(r.id, ing.id, m.method)">
                       {{ methodLabel(m.method) }} {{ fmt(m.cost) }}
                       <span v-if="m.where" class="where">({{ m.where }})</span>
                     </span>
+                    <span v-if="ing.overridden" class="forced">📌 forcé</span>
                     <span v-if="!ing.options.length" class="method na">prix manquant
                       <input type="number" class="" style="width:90px;margin-left:6px" placeholder="silver"
                         @click.stop @change="setManual(ing.id, $event)"></span>
@@ -325,6 +340,7 @@ createApp({
     const data = reactive({ recipes:[], names:{}, farm:{}, byId:{}, economy:{} });
     const prices = reactive({});      // id -> { city: sellMin }
     const manual = reactive({});      // id -> prix manuel (override)
+    const methodOverride = reactive({}); // "recetteId|ingId" -> 'buy'|'grow'|'craft' (choix forcé)
     const expanded = reactive({});
 
     const s = reactive({
@@ -335,6 +351,7 @@ createApp({
       marginThreshold: 20,
       stationFilter: 'all',
       tierFilter: 'all',
+      enchFilter: [0,1,2,3],
       lang: 'fr',
       focus: false,
       premium: true,
@@ -483,39 +500,51 @@ createApp({
     const rows = computed(() => {
       // dépendances réactives explicites
       void [s.priceCities, s.craftCity, s.eventBonus, s.stationFee, s.focus, s.premium,
-            s.lang, s.seedSource, s.npcDiscount, JSON.stringify(prices), JSON.stringify(manual)];
+            s.lang, s.seedSource, s.npcDiscount, JSON.stringify(prices), JSON.stringify(manual),
+            JSON.stringify(methodOverride)];
       const tax = s.premium ? data.economy.taxPremium : data.economy.taxFree;
       const out = [];
       for(const r of data.recipes){
         if(r.station!=='cook' && r.station!=='alchemist') continue; // seules cibles affichables
-        const cc = craftCost(r.id, new Set());
-        const craftPerCraft = cc ? cc.perCraft : null;
-        const costUnit = cc ? cc.cost : null;
+        const rrr = rrrFor(r.station);
+
+        // Décomposition : pour chaque ingrédient, la méthode CHOISIE = choix forcé
+        // (si présent et disponible), sinon la moins chère. Le coût total en découle.
+        let mat = 0, iv = 0, costable = true;
+        const breakdown = r.ingredients.map(ing => {
+          const options = methodsFor(ing.id, new Set([r.id]));
+          const cheapest = options.length ? options.reduce((a,b)=>b.cost<a.cost?b:a) : null;
+          const key = r.id + '|' + ing.id;
+          const ov = methodOverride[key];
+          const forced = ov ? options.find(o=>o.method===ov) : null;
+          const chosenOpt = forced || cheapest;
+          const excluded = (r.excludeFromRRR||[]).includes(ing.id);
+          if(chosenOpt==null) costable = false;
+          else mat += chosenOpt.cost * ing.quantity * (excluded ? 1 : (1-rrr));
+          iv += ivTier(ing.tier) * ing.quantity;
+          return {
+            id: ing.id, name: nameOf(ing.id), qty: ing.quantity, excluded,
+            options: options.map(o=>({method:o.method, cost:o.cost, where:o.where})),
+            chosen: chosenOpt ? chosenOpt.method : null,
+            overridden: !!forced,
+          };
+        });
+
+        const fee = r.tier>2 ? iv*0.1125*(s.stationFee/100) : 0;
+        const craftPerCraft = costable ? mat + fee : null;
+        const costUnit = craftPerCraft!=null ? craftPerCraft / r.quantity : null;
         const sell = (() => { const b = bestBuy(r.id); return b ? b.price : null; })();
         const netRevenue = sell!=null ? sell * r.quantity * (1-tax) : null;
         const profitCraft = (netRevenue!=null && craftPerCraft!=null) ? netRevenue - craftPerCraft : null;
         const profitUnit = profitCraft!=null ? profitCraft / r.quantity : null;
         const margin = (profitCraft!=null && craftPerCraft>0) ? (profitCraft/craftPerCraft*100) : null;
 
-        // décomposition des ingrédients (pour le détail)
-        const breakdown = r.ingredients.map(ing => {
-          const options = methodsFor(ing.id, new Set([r.id]));
-          let best = null;
-          if(options.length){ best = options.reduce((a,b)=>b.cost<a.cost?b:a).method; }
-          return {
-            id: ing.id, name: nameOf(ing.id), qty: ing.quantity,
-            excluded: (r.excludeFromRRR||[]).includes(ing.id),
-            options: options.map(o=>({method:o.method, cost:o.cost, where:o.where})),
-            best,
-          };
-        });
-
         out.push({
           id:r.id, name:nameOf(r.id), station:r.station, tier:r.tier,
           enchantment:r.enchantment, quantity:r.quantity,
           cost:costUnit, craftCost:craftPerCraft, sell, netRevenue,
           profit:profitUnit, profitCraft, margin,
-          stationFee: cc?cc.fee:0, rrr: cc?cc.rrr:rrrFor(r.station),
+          stationFee: fee, rrr,
           breakdown,
         });
       }
@@ -531,6 +560,7 @@ createApp({
     const categoryRows = computed(() => rows.value.filter(r => {
       if(s.stationFilter!=='all' && r.station!==s.stationFilter) return false;
       if(s.tierFilter!=='all' && r.tier!==s.tierFilter) return false;
+      if(!s.enchFilter.includes(r.enchantment)) return false;
       if(r.margin==null) return s.showMissing;
       return true;
     }));
@@ -560,6 +590,12 @@ createApp({
     function sortBy(k){ if(s.sortKey===k){ s.sortDir = s.sortDir==='asc'?'desc':'asc'; } else { s.sortKey=k; s.sortDir = k==='name'?'asc':'desc'; } }
     const arrow = k => s.sortKey===k ? (s.sortDir==='asc'?'▲':'▼') : '';
     const toggle = id => expanded[id] = !expanded[id];
+    // Force (ou libère) la méthode d'un ingrédient pour une recette donnée.
+    function chooseMethod(recipeId, ingId, method){
+      const key = recipeId + '|' + ingId;
+      if(methodOverride[key]===method) delete methodOverride[key]; // re-clic = retour auto
+      else methodOverride[key] = method;
+    }
     const fmt = v => v==null ? '—' : Math.round(v).toLocaleString('fr-FR');
     const signed = v => (v>0?'+':'') + fmt(v);
     const profClass = v => v==null ? 'na' : (v>=0?'pos':'neg');
@@ -574,7 +610,7 @@ createApp({
 
     return { ready, loading, error, statusText, s, CITIES, prices, manual, expanded,
       displayRows, totalDisplayable, hiddenByMargin, ignoreThreshold, fetchPrices, setManual,
-      sortBy, arrow, toggle, fmt, signed, profClass, img, imgErr, methodLabel };
+      sortBy, arrow, toggle, chooseMethod, fmt, signed, profClass, img, imgErr, methodLabel };
   }
 }).mount('#app');
 </script>
