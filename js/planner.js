@@ -57,6 +57,7 @@ export function construireLignes(ctx, volumes, opts) {
   const {
     villesVente, volumeMin = 50, seuilAberrant = 1.3,
     undercut = 0.03, taxe = 0.065,
+    tiers = null, ench = null, stations = null,
   } = opts;
 
   const lignes = [], ecartees = [];
@@ -64,6 +65,14 @@ export function construireLignes(ctx, volumes, opts) {
 
   for (const r of Object.values(ctx.byId)) {
     if (r.station !== 'cook' && r.station !== 'alchemist') continue;
+
+    // Filtres de contenu : on écarte AVANT le calcul de coût (la décomposition
+    // récursive est l'opération la plus lourde de cette boucle), et sans passer
+    // par noter() — l'encadré « écartées » sert à expliquer les rejets d'une
+    // opportunité viable, pas à lister ce que l'utilisateur a lui-même décoché.
+    if (stations && !stations.includes(r.station)) continue;
+    if (tiers && !tiers.includes(r.tier)) continue;
+    if (ench && !ench.includes(r.enchantment || 0)) continue;
 
     const c = craftCost(r.id, new Set(), ctx);
     if (!c) { noter(r.id, null, MOTIFS.coutInconnu, null); continue; }

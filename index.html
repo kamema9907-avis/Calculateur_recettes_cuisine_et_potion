@@ -29,6 +29,9 @@
   .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 18px}
   .field{display:flex;flex-direction:column;gap:5px}
   .field>label{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700}
+  .raccourci{font-size:10px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--blue);
+    text-decoration:none;margin-left:2px}
+  .raccourci:hover{text-decoration:underline}
   .cities{display:flex;flex-wrap:wrap;gap:5px 10px}
   .cities label{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap}
   select,input[type=number]{background:var(--bg);border:1px solid var(--line2);color:var(--txt);
@@ -233,17 +236,24 @@
       </div>
 
       <div class="field">
-        <label>Filtrer par tier</label>
-        <select v-model="s.tierFilter">
-          <option value="all">Tous</option>
-          <option v-for="t in [1,2,3,4,5,6,7,8]" :key="t" :value="t">T{{ t }}</option>
-        </select>
+        <label>Filtrer par tier
+          <a href="#" class="raccourci" @click.prevent="cocherTout(s,'tiers',TIERS)">tout</a> ·
+          <a href="#" class="raccourci" @click.prevent="cocherAucun(s,'tiers')">aucun</a>
+        </label>
+        <div class="cities">
+          <label v-for="t in TIERS" :key="t">
+            <input type="checkbox" :value="t" v-model="s.tiers"> T{{ t }}
+          </label>
+        </div>
       </div>
 
       <div class="field">
-        <label>Filtrer par enchantement</label>
+        <label>Filtrer par enchantement
+          <a href="#" class="raccourci" @click.prevent="cocherTout(s,'enchFilter',ENCH)">tout</a> ·
+          <a href="#" class="raccourci" @click.prevent="cocherAucun(s,'enchFilter')">aucun</a>
+        </label>
         <div class="cities">
-          <label v-for="e in [0,1,2,3]" :key="e">
+          <label v-for="e in ENCH" :key="e">
             <input type="checkbox" :value="e" v-model="s.enchFilter"> .{{ e }}
           </label>
         </div>
@@ -423,7 +433,10 @@
         </select>
       </div>
       <div class="field" style="grid-column:1 / -1">
-        <label>🛒 Villes où j'accepte d'acheter les ingrédients</label>
+        <label>🛒 Villes où j'accepte d'acheter les ingrédients
+          <a href="#" class="raccourci" @click.prevent="cocherTout(p,'villesAchat',CITIES)">tout</a> ·
+          <a href="#" class="raccourci" @click.prevent="cocherAucun(p,'villesAchat')">aucun</a>
+        </label>
         <div class="cities">
           <label v-for="c in CITIES" :key="c">
             <input type="checkbox" :value="c" v-model="p.villesAchat"> {{ c }}
@@ -431,10 +444,46 @@
         </div>
       </div>
       <div class="field" style="grid-column:1 / -1">
-        <label>💰 Villes où j'accepte de vendre</label>
+        <label>💰 Villes où j'accepte de vendre
+          <a href="#" class="raccourci" @click.prevent="cocherTout(p,'villesVente',CITIES)">tout</a> ·
+          <a href="#" class="raccourci" @click.prevent="cocherAucun(p,'villesVente')">aucun</a>
+        </label>
         <div class="cities">
           <label v-for="c in CITIES" :key="c">
             <input type="checkbox" :value="c" v-model="p.villesVente"> {{ c }}
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>🎚️ Niveaux à inclure
+          <a href="#" class="raccourci" @click.prevent="cocherTout(p,'tiers',TIERS)">tout</a> ·
+          <a href="#" class="raccourci" @click.prevent="cocherAucun(p,'tiers')">aucun</a>
+        </label>
+        <div class="cities">
+          <label v-for="t in TIERS" :key="t">
+            <input type="checkbox" :value="t" v-model="p.tiers"> T{{ t }}
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>✨ Enchantements à inclure
+          <a href="#" class="raccourci" @click.prevent="cocherTout(p,'ench',ENCH)">tout</a> ·
+          <a href="#" class="raccourci" @click.prevent="cocherAucun(p,'ench')">aucun</a>
+        </label>
+        <div class="cities">
+          <label v-for="e in ENCH" :key="e">
+            <input type="checkbox" :value="e" v-model="p.ench"> .{{ e }}
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>🏭 Stations à inclure</label>
+        <div class="cities">
+          <label v-for="st in STATIONS" :key="st">
+            <input type="checkbox" :value="st" v-model="p.stations"> {{ stationLabel(st) }}
           </label>
         </div>
       </div>
@@ -450,6 +499,15 @@
 
   <div v-if="!volumesCharges" class="empty">
     {{ chargementVolumes ? 'Chargement des volumes de vente (7 derniers jours)…' : 'Volumes non chargés.' }}
+  </div>
+
+  <div v-else-if="filtresVides.length" class="bloc">
+    <h3>🚫 Filtre vide</h3>
+    <div class="bloc-body note">
+      Aucun choix coché pour : <b>{{ filtresVides.join(', ') }}</b>.
+      Le plan ne peut retenir aucune recette tant qu'un de ces groupes reste vide —
+      utilise le lien <b>tout</b> à côté du groupe concerné.
+    </div>
   </div>
 
   <template v-else-if="plan">
@@ -482,7 +540,18 @@
       </div>
     </div>
 
-    <div class="bloc" v-if="!plan.objectifAtteint">
+    <div class="bloc" v-if="!plan.retenues.length">
+      <h3>🔍 Aucune recette ne passe les filtres</h3>
+      <div class="bloc-body note">
+        Les filtres actuels ne laissent passer aucune opportunité rentable.
+        Élargis les <b>niveaux</b>, les <b>enchantements</b>, les <b>stations</b> ou les
+        <b>villes de vente</b>, ou baisse le volume minimum ({{ p.volumeMin }} ventes/jour)
+        et la fraîcheur exigée ({{ p.maxAgeH }} h). L'encadré des opportunités écartées,
+        plus bas, donne le motif exact de chaque rejet.
+      </div>
+    </div>
+
+    <div class="bloc" v-else-if="!plan.objectifAtteint">
       <h3>⚠️ Objectif non atteint</h3>
       <div class="bloc-body note">
         Le marché n'absorbe pas assez pour dégager {{ fmtM(p.objectif) }} en une journée avec ces réglages.

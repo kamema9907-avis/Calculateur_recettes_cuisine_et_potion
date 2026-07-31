@@ -27,9 +27,13 @@ createApp({
     const pricesVersion = ref(0);            // incrémenté à chaque chargement de prix
 
     // ---- Réglages onglet Calculateur (inchangés depuis la v2) ----
+    const TIERS = [1, 2, 3, 4, 5, 6, 7, 8];
+    const ENCH = [0, 1, 2, 3];
+    const STATIONS = ['cook', 'alchemist'];
+
     const s = reactive({
       priceCities: [...CITIES], craftCity: 'auto', eventBonus: 0, stationFee: 400,
-      marginThreshold: 20, stationFilter: 'all', tierFilter: 'all', enchFilter: [0, 1, 2, 3],
+      marginThreshold: 20, stationFilter: 'all', tiers: [...TIERS], enchFilter: [...ENCH],
       lang: 'fr', focus: false, premium: true, showMissing: true,
       seedSource: 'cheapest', npcDiscount: 100, sortKey: 'margin', sortDir: 'desc',
     });
@@ -46,12 +50,22 @@ createApp({
       villesAchat: [...CITIES],
       villesVente: [...CITIES],
       craftCity: 'auto',
+      tiers: [...TIERS],
+      ench: [...ENCH],
+      stations: [...STATIONS],
     });
 
     // ---- Persistance : une douzaine de champs, les ressaisir serait pénible ----
     try {
       const sauv = JSON.parse(localStorage.getItem(CLE_REGLAGES) || 'null');
-      if (sauv) { Object.assign(s, sauv.s || {}); Object.assign(p, sauv.p || {}); }
+      if (sauv) {
+        Object.assign(s, sauv.s || {});
+        Object.assign(p, sauv.p || {});
+        // Migration : le filtre de tier était un menu déroulant ('all' ou un
+        // nombre). Sans cette conversion, un filtre actif disparaîtrait en silence.
+        if (typeof (sauv.s || {}).tierFilter === 'number') s.tiers = [sauv.s.tierFilter];
+        delete s.tierFilter;
+      }
     } catch { /* réglages corrompus : on garde les défauts */ }
     watch([s, p], () => {
       try { localStorage.setItem(CLE_REGLAGES, JSON.stringify({ s, p })); } catch {}
@@ -192,7 +206,7 @@ createApp({
 
     const categoryRows = computed(() => rows.value.filter(r => {
       if (s.stationFilter !== 'all' && r.station !== s.stationFilter) return false;
-      if (s.tierFilter !== 'all' && r.tier !== s.tierFilter) return false;
+      if (!s.tiers.includes(r.tier)) return false;
       if (!s.enchFilter.includes(r.enchantment)) return false;
       if (r.margin == null) return s.showMissing;
       return true;
@@ -231,6 +245,9 @@ createApp({
           volumeMin: p.volumeMin,
           undercut: p.undercut / 100,
           taxe: tax,
+          tiers: p.tiers,
+          ench: p.ench,
+          stations: p.stations,
         });
         ecartees.value = ec;
         plan.value = P.resoudre(lignes, ctx, volumes, {
@@ -241,6 +258,18 @@ createApp({
         });
       } finally { calculEnCours.value = false; }
     }
+
+    // Recalcul automatique une fois le premier plan établi : cocher une case doit
+    // se voir tout de suite. Le délai groupe les clics rapides (le lien « tout »
+    // modifie le tableau d'un coup, mais huit clics manuels sinon).
+    // Les réglages partagés qui pèsent sur le coût sont suivis explicitement, pour
+    // ne pas recalculer le plan à chaque frappe dans l'onglet Calculateur.
+    let timerPlan = null;
+    watch([p, () => s.premium, () => s.stationFee, () => s.eventBonus], () => {
+      if (!plan.value) return;
+      clearTimeout(timerPlan);
+      timerPlan = setTimeout(calculerPlan, 250);
+    }, { deep: true });
 
     // Le plan groupé par ville de vente : l'ordre d'une tournée en jeu.
     const planParVille = computed(() => {
@@ -316,6 +345,24 @@ createApp({
       ev.target.src = E.RENDER(id.split('@')[0]);
     }
     const methodLabel = m => ({ buy: 'Acheter', grow: 'Cultiver', craft: 'Fabriquer' })[m] || m;
+    const stationLabel = st => ({ cook: 'Cuisine', alchemist: 'Alchimie' })[st] || st;
+
+    // Raccourcis des groupes de cases à cocher : cinq groupes dans l'onglet Plan,
+    // isoler un seul niveau demanderait sinon sept clics.
+    const cocherTout = (obj, cle, valeurs) => obj[cle] = [...valeurs];
+    const cocherAucun = (obj, cle) => obj[cle] = [];
+
+    // Un groupe vidé ne produit aucune ligne : on veut le dire explicitement
+    // plutôt que d'afficher un plan à zéro sans explication.
+    const filtresVides = computed(() => {
+      const vides = [];
+      if (!p.tiers.length) vides.push('niveau');
+      if (!p.ench.length) vides.push('enchantement');
+      if (!p.stations.length) vides.push('station');
+      if (!p.villesVente.length) vides.push('ville de vente');
+      if (!p.villesAchat.length) vides.push('ville d\'achat');
+      return vides;
+    });
     function sortBy(k) {
       if (s.sortKey === k) s.sortDir = s.sortDir === 'asc' ? 'desc' : 'asc';
       else { s.sortKey = k; s.sortDir = k === 'name' ? 'asc' : 'desc'; }
@@ -331,8 +378,10 @@ createApp({
 
     return {
       // état
-      ready, loading, error, statusText, onglet, s, p, CITIES, prices, manual, expanded,
-      volumesCharges, chargementVolumes, calculEnCours,
+      ready, loading, error, statusText, onglet, s, p, CITIES, TIERS, ENCH, STATIONS,
+      prices, manual, expanded,
+      volumesCharges, chargementVolumes, calculEnCours, filtresVides,
+      cocherTout, cocherAucun, stationLabel,
       // calculateur
       displayRows, totalDisplayable, hiddenByMargin, ignoreThreshold,
       fetchPrices, setManual, sortBy, arrow, toggle, chooseMethod,
