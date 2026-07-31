@@ -21,14 +21,26 @@ Aucun `npm`, aucun build : Vue 3 est chargé via CDN.
 
 ---
 
-## 🌐 Mettre en ligne sur GitHub Pages
+## 🌐 En ligne (GitHub Pages)
 
-1. Crée un dépôt GitHub et pousse **tout le dossier** (au minimum `index.html` et `data/`).
-2. Dépôt → **Settings → Pages** → *Source : Deploy from a branch* → branche `main`, dossier `/ (root)`.
-3. L'URL `https://<ton-pseudo>.github.io/<depot>/` sert le calculateur, utilisable sur
-   PC, tablette et smartphone (l'interface bascule en cartes sur petit écran).
+👉 **https://kamema9907-avis.github.io/Calculateur_recettes_cuisine_et_potion/**
 
-Les appels à l'API de prix fonctionnent depuis GitHub Pages (CORS autorisé).
+Utilisable depuis n'importe quel appareil : PC, tablette, smartphone (l'interface bascule en
+cartes sur petit écran). Sur mobile, *Ajouter à l'écran d'accueil* donne un accès en un tap.
+
+Pages sert la branche `main` à la racine. Le développement se fait sur `version-3` ; pour
+publier une amélioration :
+
+```
+git checkout main
+git merge version-3
+git push
+git checkout version-3
+```
+
+Le site se met à jour tout seul 30 à 60 secondes après le push.
+
+Les appels à l'API de prix fonctionnent depuis GitHub Pages (CORS autorisé, tout en HTTPS).
 
 ---
 
@@ -78,4 +90,5 @@ index.html              L'application (Vue 3 CDN, autonome)
 data/recipes-data.json  Données réduites générées
 scripts/build-data.js   Générateur des données depuis la librairie
 Lancer.bat              Lance serveur + navigateur (Windows)
+.nojekyll               Désactive Jekyll sur GitHub Pages
 ```
