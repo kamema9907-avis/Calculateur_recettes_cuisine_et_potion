@@ -1,8 +1,12 @@
 # 🍲 Albion — Calculateur Cuisine & Potions
 
-Page web (Vue 3) qui calcule le **coût de fabrication** et le **profit** des recettes
-*Cuisinier (cook)* et *Alchimiste (alchemist)* d'Albion Online, en comparant pour
-chaque ingrédient **acheter au marché vs cultiver depuis une graine vs fabriquer**.
+Page web (Vue 3) à deux onglets pour l'économie *Cuisinier* et *Alchimiste* d'Albion Online.
+
+- **📊 Calculateur** — coût de fabrication et profit de chaque recette, en comparant pour
+  chaque ingrédient **acheter au marché vs cultiver depuis une graine vs fabriquer**.
+- **🎯 Plan de profit** — un plan d'action exécutable dans la journée : quoi acheter et où,
+  quoi fabriquer, quoi vendre et où, en quelles quantités, sous contrainte de capital,
+  de volume réellement échangé et de diversification.
 
 Serveur de jeu : **Europe**. Prix : **albion-online-data**.
 
@@ -66,6 +70,46 @@ Les appels à l'API de prix fonctionnent depuis GitHub Pages (CORS autorisé, to
 
 Tous les prix sont **modifiables à la main** (clic sur une ligne → détail).
 
+⚠️ Ce tableau **ignore le volume échangé**. Une marge de 60 % sur un objet qui se vend
+6 fois par jour ne rapporte rien. C'est exactement ce que corrige l'onglet Plan.
+
+---
+
+## 🎯 L'onglet Plan de profit
+
+Tu saisis ton capital et ton objectif, il te sort la tournée à faire dans la journée.
+
+### Ce qu'il corrige par rapport au tableau
+
+1. **Il mesure le volume.** Sur 377 recettes affichables, 273 sont enchantées et
+   s'échangent entre 1 et 50 unités par jour. Le plan écarte les marchés trop étroits.
+2. **Il ne fait pas confiance au prix affiché.** `sell_price_min` est le prix *demandé*
+   le plus bas : un joueur isolé peut y poster n'importe quoi. 10 % des couples
+   objet × ville affichent plus de 1,3× le prix réellement transigé, avec des cas à
+   **440×**. Le plan retient `min(prix affiché, prix réel moyen sur 7 j)` moins l'undercut,
+   et signale chaque ligne corrigée.
+3. **Il tient compte de ce qui est faisable en 24 h.** La culture est exclue (cycle de
+   22 h), le focus n'est pas utilisé (pool limité, coût dépendant de ta spécialisation).
+   Le bénéfice annoncé est donc un **plancher**.
+
+### Les quatre bornes sur chaque quantité
+
+| Borne | Pourquoi |
+|---|---|
+| % du volume quotidien du produit | tu ne peux pas écouler plus que ce que le marché absorbe |
+| % du volume quotidien de **chaque ingrédient** | acheter en masse fait monter ton propre prix d'achat |
+| capital restant | évident |
+| plafond par objet (15 % du bénéfice) | ne pas dépendre d'un seul produit |
+
+### Ce qu'il affiche
+
+Le bénéfice atteint et le capital réellement mobilisé, la **tournée groupée par ville de
+vente**, la **liste de courses groupée par ville d'achat**, l'exposition par objet pour
+contrôler la règle des 15 %, les prix corrigés, et les opportunités écartées avec leur motif.
+
+Les réglages sont mémorisés dans le navigateur ; prix et volumes sont mis en cache
+(30 min et 6 h) pour éviter de retaper l'API à chaque ouverture.
+
 ---
 
 ## 🔄 Régénérer les données après un patch du jeu
@@ -86,9 +130,32 @@ les cultures utilisées et les noms FR/EN concernés (~180 Ko au lieu de ~12 Mo)
 ## 📁 Structure
 
 ```
-index.html              L'application (Vue 3 CDN, autonome)
+index.html              HTML, styles et les deux onglets
+js/engine.js            Moteur de coût (acheter / cultiver / fabriquer)
+js/market.js            Prix, volumes, cache localStorage
+js/planner.js           Solveur du plan sous contraintes
+js/app.js               État, réglages, persistance
 data/recipes-data.json  Données réduites générées
 scripts/build-data.js   Générateur des données depuis la librairie
 Lancer.bat              Lance serveur + navigateur (Windows)
 .nojekyll               Désactive Jekyll sur GitHub Pages
 ```
+
+Modules ES natifs, **aucun build**. Ils imposent en revanche un serveur HTTP :
+`Lancer.bat` ou GitHub Pages conviennent, l'ouverture directe du fichier en `file://` non.
+
+---
+
+## ⚠️ Limites assumées
+
+- **Profondeur du carnet d'ordres** : l'API ne publie que le prix de la première unité.
+  La borne sur la liquidité des ingrédients limite le glissement, sans l'éliminer.
+- **Coût en focus** : dépend de ta spécialisation par recette, donnée absente des fichiers
+  du jeu. D'où le choix d'un bénéfice plancher calculé sans focus.
+- **Taxe de station** : fixée par les gouverneurs et variable par ville. Réglage global
+  (400 par défaut), *à calibrer en jeu*.
+- **Risque et temps de transport** : non chiffrables. À gérer via la sélection des villes.
+- **Concurrence** : albion-online-data est public. Les marchés liquides et sains sont
+  scrutés par beaucoup de joueurs avec les mêmes chiffres.
+- **Impact de tes propres ordres** : injecter une part notable du volume quotidien fait
+  baisser le prix. Le plan suppose un prix constant, ce qui reste optimiste à la marge.

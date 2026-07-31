@@ -16,6 +16,13 @@
   .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
   a{color:var(--blue)}
 
+  /* ---- Onglets ---- */
+  .tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:2px solid var(--line)}
+  .tab{padding:10px 18px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);
+    border:1px solid transparent;border-bottom:none;border-radius:8px 8px 0 0;margin-bottom:-2px}
+  .tab:hover{color:var(--txt)}
+  .tab.on{color:var(--gold);background:var(--panel);border-color:var(--line);border-bottom:2px solid var(--panel)}
+
   /* ---- Settings bar ---- */
   .settings{background:var(--panel);border:1px solid var(--line);
     border-radius:10px;padding:12px 14px;margin-bottom:14px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
@@ -37,7 +44,7 @@
   .status.err{color:var(--red)}
 
   /* ---- Table ---- */
-  .tablewrap{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .tablewrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
   table{width:100%;border-collapse:collapse}
   thead th{position:sticky;top:0;z-index:10;background:var(--panel2);color:var(--gold);text-align:right;
     padding:11px 12px;font-size:12px;border-bottom:2px solid var(--line);cursor:pointer;white-space:nowrap}
@@ -87,7 +94,43 @@
   .hidden-bar{margin:10px 2px 0;padding:9px 13px;background:var(--panel);border:1px solid var(--line);
     border-radius:8px;font-size:13px;color:var(--muted)}
   .hidden-bar a{font-weight:700;margin-left:6px}
-  .legend{font-size:11px;color:var(--muted);margin:10px 2px 0}
+  .legend{font-size:11px;color:var(--muted);margin:10px 2px 0;line-height:1.5}
+
+  /* ---- Plan ---- */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .kpi .k{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700}
+  .kpi .v{font-size:22px;font-weight:700;margin-top:4px}
+  .kpi.ok .v{color:var(--green)}
+  .kpi.ko .v{color:var(--red)}
+  .bloc{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:14px;overflow:hidden}
+  .bloc>h3{margin:0;padding:11px 14px;font-size:13px;color:var(--gold);background:var(--panel2);
+    border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .bloc>h3 .meta{color:var(--muted);font-weight:400;font-size:12px}
+  .bloc-body{padding:12px 14px}
+  .ville-head{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:9px 14px;background:#202020;border-bottom:1px solid var(--line);font-size:13px}
+  .ville-head b{color:var(--gold)}
+  .ville-head .chiffres{color:var(--muted);font-size:12px}
+  .ptable{width:100%;border-collapse:collapse}
+  .ptable th{background:transparent;position:static;font-size:11px;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.4px;padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);cursor:default}
+  .ptable th.left{text-align:left}
+  .ptable td{padding:8px 10px;border-bottom:1px solid #262626;font-size:13px;text-align:right}
+  .ptable td.left{text-align:left}
+  .ptable tr:last-child td{border-bottom:none}
+  .tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;border:1px solid var(--line2);
+    color:var(--muted);margin-left:6px;white-space:nowrap}
+  .tag.warn{color:#ffcf7a;border-color:#5a4527;background:rgba(243,169,24,.08)}
+  .tag.bride{color:var(--blue);border-color:#2d4d63}
+  .bar{height:5px;background:#2a2a2a;border-radius:3px;overflow:hidden;margin-top:4px;min-width:60px}
+  .bar>i{display:block;height:100%;background:var(--gold)}
+  .bar.full>i{background:var(--red)}
+  .note{font-size:12px;color:var(--muted);line-height:1.55}
+  .note b{color:var(--txt)}
+  .motif{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #262626;font-size:12px}
+  .motif:last-child{border-bottom:none}
+  .motif .ex{color:var(--muted);font-size:11px}
 
   /* ---- Responsive : table -> cards ---- */
   @media(max-width:760px){
@@ -100,15 +143,29 @@
     tr.detail td{display:block}
     .ing{grid-template-columns:30px 1fr;}
     .methods{grid-column:1 / -1;justify-content:flex-start;margin-top:4px}
+    .ptable thead{display:none}
+    .ptable tr{display:grid;grid-template-columns:1fr auto;gap:3px 10px;padding:9px 12px;border-bottom:1px solid var(--line)}
+    .ptable td{border:none;padding:2px 0}
+    .ptable td.left{grid-column:1 / -1}
+    .ptable td[data-label]::before{content:attr(data-label);float:left;color:var(--muted);font-size:11px;
+      text-transform:uppercase;letter-spacing:.4px;margin-right:8px}
   }
 </style>
 </head>
 <body>
 <div id="app">
   <h1>🍲 Albion — Calculateur Cuisine &amp; Potions</h1>
-  <div class="sub">Serveur <b>Europe</b> · prix <b>albion-online-data</b> · {{ displayRows.length }} recette(s) affichée(s) sur {{ totalDisplayable }}</div>
+  <div class="sub">Serveur <b>Europe</b> · prix <b>albion-online-data</b></div>
 
-  <!-- ===== Réglages ===== -->
+  <div class="tabs">
+    <div class="tab" :class="{on:onglet==='calc'}" @click="onglet='calc'">📊 Calculateur</div>
+    <div class="tab" :class="{on:onglet==='plan'}" @click="onglet='plan'">🎯 Plan de profit</div>
+  </div>
+
+  <!-- ==================== ONGLET CALCULATEUR ==================== -->
+  <template v-if="onglet==='calc'">
+  <div class="sub">{{ displayRows.length }} recette(s) affichée(s) sur {{ totalDisplayable }}</div>
+
   <div class="settings">
     <div class="settings-grid">
       <div class="field" style="grid-column:1 / -1">
@@ -205,12 +262,11 @@
       <label class="toggle"><input type="checkbox" v-model="s.focus"> Utiliser le <b>Focus</b> (craft +59% RRR · arrosage cultures)</label>
       <label class="toggle"><input type="checkbox" v-model="s.premium"> Compte <b>Premium</b> (taxe vente 6,5% · rendement ferme ×2)</label>
       <label class="toggle"><input type="checkbox" v-model="s.showMissing"> Afficher aussi les recettes à prix manquant</label>
-      <button @click="fetchPrices" :disabled="loading">{{ loading ? 'Chargement…' : '↻ Rafraîchir les prix' }}</button>
+      <button @click="fetchPrices(true)" :disabled="loading">{{ loading ? 'Chargement…' : '↻ Rafraîchir les prix' }}</button>
       <span class="status" :class="{err:error}">{{ error || statusText }}</span>
     </div>
   </div>
 
-  <!-- ===== Tableau ===== -->
   <div class="tablewrap" v-if="ready">
     <table>
       <thead>
@@ -266,7 +322,7 @@
                     </span>
                     <span v-if="ing.overridden" class="forced">📌 forcé</span>
                     <span v-if="!ing.options.length" class="method na">prix manquant
-                      <input type="number" class="" style="width:90px;margin-left:6px" placeholder="silver"
+                      <input type="number" style="width:90px;margin-left:6px" placeholder="silver"
                         @click.stop @change="setManual(ing.id, $event)"></span>
                   </div>
                 </div>
@@ -296,7 +352,6 @@
   </div>
   <div v-else class="empty">Chargement des données…</div>
 
-  <!-- Compteur des recettes masquées par le seuil de marge -->
   <div class="hidden-bar" v-if="ready && (hiddenByMargin>0 || ignoreThreshold)">
     <template v-if="!ignoreThreshold">
       🔻 <b>{{ hiddenByMargin }}</b> recette(s) masquée(s) car sous le seuil de {{ s.marginThreshold }}%.
@@ -312,307 +367,303 @@
     💡 Coût = chemin le moins cher pour chaque ingrédient (achat marché, culture depuis graine, ou fabrication), RRR déduit selon ville/focus/événement.
     Culture : coût = prix graine × (1 − taux de retour) ÷ rendement (≈9 premium). Arrosée au focus, la graine se rembourse → coût ≈ 0.
     Frais de station = Item Value × 0,1125 × tarif/100 (calibrage à affiner). Profit = vente nette (taxe {{ s.premium?'6,5':'10,5' }}%) − coût de fabrication.
+    <br>⚠️ Ce tableau classe par marge et ignore le volume échangé : une marge de 60% sur un item qui se vend 6 fois par jour ne rapporte rien.
+    Pour un plan exécutable, va dans l'onglet <b>Plan de profit</b>.
   </p>
+  </template>
+
+  <!-- ==================== ONGLET PLAN ==================== -->
+  <template v-if="onglet==='plan'">
+  <div class="settings">
+    <div class="settings-grid">
+      <div class="field">
+        <label>Capital disponible (silver)</label>
+        <input type="number" min="0" step="1000000" v-model.number="p.capital" style="width:100%">
+      </div>
+      <div class="field">
+        <label>Objectif de bénéfice (silver)</label>
+        <input type="number" min="0" step="500000" v-model.number="p.objectif" style="width:100%">
+      </div>
+      <div class="field">
+        <label>Part du volume quotidien captable</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" min="1" max="100" step="5" v-model.number="p.partVolume"> <span>%</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Volume minimum d'un marché</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" min="0" step="10" v-model.number="p.volumeMin"> <span>ventes/j</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Fraîcheur maximale du prix</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" min="1" step="1" v-model.number="p.maxAgeH"> <span>heures</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Bénéfice maximum sur un même item</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" min="1" max="100" step="5" v-model.number="p.partMaxItem"> <span>%</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Décote d'undercut sur le prix de vente</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" min="0" max="20" step="1" v-model.number="p.undercut"> <span>%</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Ville de fabrication</label>
+        <select v-model="p.craftCity">
+          <option value="auto">Auto (idéale par recette)</option>
+          <option v-for="c in CITIES" :key="c" :value="c">{{ c }}</option>
+          <option value="none">Autre ville (sans bonus)</option>
+        </select>
+      </div>
+      <div class="field" style="grid-column:1 / -1">
+        <label>🛒 Villes où j'accepte d'acheter les ingrédients</label>
+        <div class="cities">
+          <label v-for="c in CITIES" :key="c">
+            <input type="checkbox" :value="c" v-model="p.villesAchat"> {{ c }}
+          </label>
+        </div>
+      </div>
+      <div class="field" style="grid-column:1 / -1">
+        <label>💰 Villes où j'accepte de vendre</label>
+        <div class="cities">
+          <label v-for="c in CITIES" :key="c">
+            <input type="checkbox" :value="c" v-model="p.villesVente"> {{ c }}
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="row-inline">
+      <button @click="calculerPlan" :disabled="!volumesCharges || calculEnCours">🎯 Calculer le plan</button>
+      <button class="ghost" @click="fetchVolumes(true)" :disabled="chargementVolumes">↻ Recharger prix &amp; volumes</button>
+      <button class="ghost" @click="viderCache">🗑 Vider le cache</button>
+      <span class="status" :class="{err:error}">{{ error || statusText }}</span>
+    </div>
+  </div>
+
+  <div v-if="!volumesCharges" class="empty">
+    {{ chargementVolumes ? 'Chargement des volumes de vente (7 derniers jours)…' : 'Volumes non chargés.' }}
+  </div>
+
+  <template v-else-if="plan">
+    <!-- Bandeau de résultat -->
+    <div class="kpis">
+      <div class="kpi" :class="plan.objectifAtteint?'ok':'ko'">
+        <div class="k">Bénéfice du plan</div>
+        <div class="v">{{ fmtM(plan.profitTotal) }}</div>
+        <div class="note">{{ plan.objectifAtteint ? '✅ objectif atteint' : '❌ ' + Math.round(plan.profitTotal/p.objectif*100) + '% de l\'objectif' }}</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Capital mobilisé</div>
+        <div class="v">{{ fmtM(plan.capitalUtilise) }}</div>
+        <div class="note">sur {{ fmtM(p.capital) }} disponibles</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Rendement</div>
+        <div class="v">{{ plan.capitalUtilise>0 ? Math.round(plan.profitTotal/plan.capitalUtilise*100)+'%' : '—' }}</div>
+        <div class="note">bénéfice ÷ capital engagé</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Items distincts</div>
+        <div class="v">{{ plan.nbItems }}</div>
+        <div class="note">plafond {{ fmtM(plan.plafond) }} par item</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Lignes du plan</div>
+        <div class="v">{{ plan.retenues.length }}</div>
+        <div class="note">{{ planParVille.length }} ville(s) de vente</div>
+      </div>
+    </div>
+
+    <div class="bloc" v-if="!plan.objectifAtteint">
+      <h3>⚠️ Objectif non atteint</h3>
+      <div class="bloc-body note">
+        Le marché n'absorbe pas assez pour dégager {{ fmtM(p.objectif) }} en une journée avec ces réglages.
+        Ce n'est presque jamais le capital qui bloque ({{ fmtM(plan.capitalUtilise) }} utilisés sur {{ fmtM(p.capital) }}),
+        mais le débouché. Pour élargir : augmente la part du volume captable, baisse le volume minimum,
+        coche plus de villes de vente, ou allonge l'horizon en acceptant d'écouler sur deux jours.
+      </div>
+    </div>
+
+    <!-- Tournée : quoi vendre et où -->
+    <div class="bloc" v-for="g in planParVille" :key="g.ville">
+      <h3>
+        <span>💰 Vendre à {{ g.ville }}</span>
+        <span class="meta">{{ fmtM(g.profit) }} de bénéfice · {{ fmtM(g.investi) }} engagés</span>
+      </h3>
+      <table class="ptable">
+        <thead>
+          <tr>
+            <th class="left">Produit</th>
+            <th>Qté</th>
+            <th>Coût / u</th>
+            <th>Prix retenu</th>
+            <th>Profit / u</th>
+            <th>Bénéfice</th>
+            <th>Part du marché</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="l in g.lignes" :key="l.id+l.villeVente">
+            <td class="left">
+              <div class="item-cell">
+                <img class="ing-img" :src="img(l.id)" loading="lazy" @error="imgErr($event, l.id)" :alt="l.id">
+                <div>
+                  <div class="item-name">{{ nameOf(l.id) }}
+                    <span v-if="l.enchantment" class="ench">@{{ l.enchantment }}</span>
+                    <span class="tier-badge">T{{ l.tier }}</span>
+                    <span v-if="l.aberrant" class="tag warn" :title="'Prix affiché ' + ratioFmt(l.ratio) + '× le prix réellement transigé — valorisé au prix réel'">
+                      prix affiché {{ ratioFmt(l.ratio) }}× le réel
+                    </span>
+                    <span v-if="l.brideePar" class="tag bride" :title="'Quantité limitée par la liquidité de cet ingrédient'">
+                      bridé par {{ nameOf(l.brideePar.id) }}
+                    </span>
+                  </div>
+                  <div class="item-id">
+                    <span class="pill" :class="l.station==='cook'?'cook':'alch'">{{ l.station==='cook'?'Cuisine':'Alchimie' }}</span>
+                    · fabriquer {{ Math.ceil(l.q / l.quantity) }} craft(s) · {{ Math.round(l.vol) }} ventes/j sur ce marché
+                    · prix relevé il y a {{ l.ageH.toFixed(1) }} h
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td data-label="Qté"><b>{{ fmt(l.q) }}</b></td>
+            <td data-label="Coût / u">{{ fmt(l.coutU) }}</td>
+            <td data-label="Prix retenu">
+              {{ fmt(l.prixRetenu) }}
+              <div class="item-id" v-if="Math.round(l.prixAffiche)!==Math.round(l.prixRetenu)">affiché {{ fmt(l.prixAffiche) }}</div>
+            </td>
+            <td data-label="Profit / u" class="pos">{{ signed(l.profitU) }}</td>
+            <td data-label="Bénéfice" class="pos"><b>{{ fmt(l.profit) }}</b></td>
+            <td data-label="Part du marché">
+              {{ pct(l.partMarche) }}
+              <div class="bar"><i :style="{width: Math.min(100, l.partMarche*100)+'%'}"></i></div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Liste de courses : quoi acheter et où -->
+    <div class="bloc" v-if="coursesParVille.length">
+      <h3>
+        <span>🛒 Liste de courses</span>
+        <span class="meta">total {{ fmtM(plan.capitalUtilise) }}</span>
+      </h3>
+      <template v-for="g in coursesParVille" :key="g.ville">
+        <div class="ville-head">
+          <b>Acheter à {{ g.ville }}</b>
+          <span class="chiffres">{{ g.items.length }} article(s) · {{ fmtM(g.cout) }}</span>
+        </div>
+        <table class="ptable">
+          <tbody>
+            <tr v-for="a in g.items" :key="g.ville+a.id">
+              <td class="left">
+                <div class="item-cell">
+                  <img class="ing-img" :src="img(a.id)" loading="lazy" @error="imgErr($event, a.id)" :alt="a.id">
+                  <div>
+                    <div class="item-name">{{ nameOf(a.id) }}</div>
+                    <div class="item-id">{{ a.id }}</div>
+                  </div>
+                </div>
+              </td>
+              <td data-label="Quantité"><b>{{ fmt(a.qte) }}</b></td>
+              <td data-label="Prix / u">{{ fmt(a.prixU) }}</td>
+              <td data-label="Coût total">{{ fmt(a.cout) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </template>
+    </div>
+
+    <!-- Exposition par item : contrôle de la règle des 15% -->
+    <div class="bloc">
+      <h3>
+        <span>⚖️ Exposition par item</span>
+        <span class="meta">règle : max {{ p.partMaxItem }}% du bénéfice, soit {{ fmtM(plan.plafond) }}</span>
+      </h3>
+      <table class="ptable">
+        <tbody>
+          <tr v-for="e in expositionItems" :key="e.id">
+            <td class="left">{{ e.name }}</td>
+            <td data-label="Bénéfice">{{ fmt(e.profit) }}</td>
+            <td data-label="Part">
+              {{ e.part.toFixed(1) }}%
+              <div class="bar" :class="{full:e.plafondAtteint}"><i :style="{width: Math.min(100, e.part/p.partMaxItem*100)+'%'}"></i></div>
+            </td>
+            <td data-label="Statut">
+              <span v-if="e.plafondAtteint" class="tag warn">plafond atteint</span>
+              <span v-else class="na">ok</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Corrections anti-ordre-aberrant -->
+    <div class="bloc" v-if="lignesCorrigees.length">
+      <h3><span>🩹 Prix corrigés</span><span class="meta">{{ lignesCorrigees.length }} ligne(s)</span></h3>
+      <div class="bloc-body">
+        <p class="note" style="margin-top:0">
+          Sur ces marchés, le prix affiché dépasse largement le prix auquel l'objet s'échange réellement :
+          un vendeur isolé a posté un ordre que personne n'achète. Le plan les valorise au
+          <b>prix réellement transigé</b>, jamais au prix affiché.
+        </p>
+        <table class="ptable">
+          <tbody>
+            <tr v-for="l in lignesCorrigees" :key="l.id+l.villeVente">
+              <td class="left">{{ nameOf(l.id) }} <span class="na">— {{ l.villeVente }}</span></td>
+              <td data-label="Affiché" class="na">{{ fmt(l.prixAffiche) }}</td>
+              <td data-label="Réel">{{ fmt(l.prixReel) }}</td>
+              <td data-label="Écart"><span class="tag warn">{{ ratioFmt(l.ratio) }}×</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Écartées -->
+    <div class="bloc" v-if="ecarteesResume.length">
+      <h3><span>🚫 Opportunités écartées</span><span class="meta">{{ ecarteesResume.reduce((a,b)=>a+b.n,0) }} au total</span></h3>
+      <div class="bloc-body">
+        <div class="motif" v-for="m in ecarteesResume" :key="m.motif">
+          <div>
+            <b>{{ m.n }}</b> — {{ m.motif }}
+            <div class="ex">
+              <span v-for="(e,i) in m.exemples" :key="i">
+                {{ nameOf(e.id) }}<span v-if="e.ville"> ({{ e.ville }})</span><span v-if="e.detail"> {{ e.detail }}</span><span v-if="i<m.exemples.length-1"> · </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="legend">
+      🎯 Le plan retient, pour chaque couple recette × ville, le prix le plus bas entre le carnet d'ordres et
+      le prix réellement transigé sur 7 jours, moins {{ p.undercut }}% d'undercut, puis déduit la taxe de vente
+      ({{ s.premium?'6,5':'10,5' }}%). Les quantités sont plafonnées par quatre bornes : {{ p.partVolume }}% du volume
+      quotidien du produit, {{ p.partVolume }}% du volume quotidien de chaque ingrédient acheté, le capital restant,
+      et le plafond de {{ p.partMaxItem }}% du bénéfice par item.
+      <br>❗ Calculé <b>sans focus</b> et <b>sans culture</b> : c'est un bénéfice plancher, réalisable dans la journée.
+      Le focus (+59% de retour) et l'agriculture améliorent le résultat mais dépendent respectivement de ton pool de
+      points et d'un cycle de 22 h.
+      <br>❗ L'API ne publie pas la profondeur du carnet d'ordres. Acheter en masse fait monter ton propre prix
+      d'achat : la borne sur la liquidité des ingrédients limite ce risque sans l'éliminer.
+    </p>
+  </template>
+  <div v-else class="empty">Clique sur <b>Calculer le plan</b>.</div>
+  </template>
 </div>
 
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-<script>
-const { createApp, reactive, ref, computed, watch, onMounted } = Vue;
-
-const CITIES = ['Caerleon','Bridgewatch','Lymhurst','Martlock','Fort Sterling','Thetford','Brecilien'];
-const SPECIALTY = { cook:'Caerleon', alchemist:'Brecilien' }; // ville donnant le +15% par catégorie
-const RENDER = id => `https://render.albiononline.com/v1/item/${id}.png?quality=1`;
-
-// Prix du Marchand fermier (PNJ des îles) — graines, identique pour tous les types
-// d'un même tier. Valeurs fournies en jeu (sujettes au Global Discount, ajustable).
-const NPC_SEED = { 1:2312, 2:3468, 3:5780, 4:8670, 5:11560, 6:17340, 7:26010, 8:34680 };
-// Bébés producteurs (œuf/lait) — pour la PHASE 2 (élevage), non câblés pour l'instant :
-//   poussin T3=5780, chevreau T4=8670, oison T5=11560, agneau T6=17340,
-//   porcelet T7=26010, vachette T8=34680.
-// Veaux/poulains (montures, hors scope cuisine/potion) : T3=28900 … T8=7020000.
-
-createApp({
-  setup(){
-    const ready = ref(false);
-    const loading = ref(false);
-    const error = ref('');
-    const statusText = ref('');
-    const data = reactive({ recipes:[], names:{}, farm:{}, byId:{}, economy:{} });
-    const prices = reactive({});      // id -> { city: sellMin }
-    const manual = reactive({});      // id -> prix manuel (override)
-    const methodOverride = reactive({}); // "recetteId|ingId" -> 'buy'|'grow'|'craft' (choix forcé)
-    const expanded = reactive({});
-
-    const s = reactive({
-      priceCities: [...CITIES],
-      craftCity: 'auto',
-      eventBonus: 0,
-      stationFee: 400,
-      marginThreshold: 20,
-      stationFilter: 'all',
-      tierFilter: 'all',
-      enchFilter: [0,1,2,3],
-      lang: 'fr',
-      focus: false,
-      premium: true,
-      showMissing: true,
-      seedSource: 'cheapest',   // 'cheapest' | 'npc' | 'market'
-      npcDiscount: 100,         // % du prix PNJ (Global Discount)
-      sortKey: 'margin',
-      sortDir: 'desc',
-    });
-
-    // ---------- Chargement données ----------
-    onMounted(async () => {
-      try{
-        const d = await (await fetch('data/recipes-data.json')).json();
-        data.recipes = d.recipes;
-        data.names = d.names;
-        data.farm = d.farm;
-        data.economy = d.economy;
-        d.recipes.forEach(r => data.byId[r.id] = r);
-        ready.value = true;
-        fetchPrices();
-      }catch(e){ error.value = 'Impossible de charger data/recipes-data.json — sers le dossier via un serveur HTTP.'; }
-    });
-
-    const nameOf = id => {
-      const n = data.names[id]; if(!n) return id;
-      return n[s.lang] || n.fr || n.en || id;
-    };
-
-    // ---------- Prix (API albion-online-data) ----------
-    function allPriceIds(){
-      const set = new Set();
-      for(const r of data.recipes){ set.add(r.id); for(const i of r.ingredients) set.add(i.id); }
-      for(const f of Object.values(data.farm)) set.add(f.seedId);
-      return [...set];
-    }
-    async function fetchPrices(){
-      if(!ready.value) return;
-      loading.value = true; error.value='';
-      const ids = allPriceIds();
-      const locations = encodeURIComponent(CITIES.join(','));
-      const chunks = [];
-      for(let i=0;i<ids.length;i+=100) chunks.push(ids.slice(i,i+100));
-      let got=0;
-      try{
-        for(const chunk of chunks){
-          const url = `https://europe.albion-online-data.com/api/v2/stats/prices/${chunk.join(',')}?locations=${locations}&qualities=1`;
-          const res = await fetch(url);
-          if(!res.ok) throw new Error('HTTP '+res.status);
-          const arr = await res.json();
-          for(const row of arr){
-            const p = row.sell_price_min;
-            if(!p) continue;
-            if(!prices[row.item_id]) prices[row.item_id] = {};
-            // garde le plus bas si plusieurs qualités/dates remontent
-            const cur = prices[row.item_id][row.city];
-            if(cur==null || p<cur) prices[row.item_id][row.city] = p;
-            got++;
-          }
-        }
-        statusText.value = `Prix mis à jour — ${got} entrées · ${new Date().toLocaleTimeString('fr-FR')}`;
-      }catch(e){
-        error.value = 'API prix indisponible ('+e.message+'). Tu peux saisir les prix à la main.';
-      }finally{ loading.value=false; }
-    }
-
-    function setManual(id, ev){
-      const v = parseFloat(ev.target.value);
-      if(isNaN(v) || v<=0) delete manual[id]; else manual[id]=v;
-    }
-
-    // ---------- Moteur de coût ----------
-    function bestBuy(id){
-      if(manual[id]!=null) return { price:manual[id], city:'manuel' };
-      const pd = prices[id]; if(!pd) return null;
-      let best=null;
-      for(const c of s.priceCities){ const p=pd[c]; if(p>0 && (!best||p<best.price)) best={price:p,city:c}; }
-      return best;
-    }
-    function rrrFor(station){
-      let bonus = 18 + s.eventBonus + (s.focus?59:0);
-      const spec = SPECIALTY[station];
-      if(spec && (s.craftCity==='auto' || s.craftCity===spec)) bonus += 15;
-      return 1 - 1/(1+bonus/100);
-    }
-    const ivTier = t => Math.max(0, Math.pow(2,t)-2);
-
-    // coût pour obtenir 1 unité de `id` (min achat / culture / fabrication)
-    function unitCost(id, seen){
-      const opts = methodsFor(id, seen);
-      if(!opts.length) return null;
-      return opts.reduce((a,b)=> b.cost<a.cost ? b : a);
-    }
-    function npcSeedPrice(tier){
-      return NPC_SEED[tier]!=null ? NPC_SEED[tier]*(s.npcDiscount/100) : null;
-    }
-    function growCost(id){
-      const f = data.farm[id]; if(!f || !f.seedId) return null;
-      // sources de graine possibles selon le réglage
-      const cand = [];
-      if(s.seedSource!=='market'){
-        const npc = npcSeedPrice(f.tier);
-        if(npc!=null) cand.push({ price:npc, where:'graine PNJ' });
-      }
-      if(s.seedSource!=='npc'){
-        const m = bestBuy(f.seedId);
-        if(m) cand.push({ price:m.price, where:'graine marché '+m.city });
-      }
-      if(!cand.length) return null;
-      const seed = cand.reduce((a,b)=> b.price<a.price ? b : a);
-      // Rendement : ~9 récoltes/graine en premium, ~4,5 sans premium.
-      const cropYield = s.premium ? f.yield : f.yield/2;
-      // Retour de graine : on récupère une partie des graines (replantables).
-      // Arrosé au focus, le retour dépasse souvent 100% -> graine nette ≈ 0.
-      const seedReturn = (f.seedReturn||0) + (s.focus ? (f.nurtureBonus||0) : 0);
-      const netSeeds = Math.max(0, 1 - seedReturn);
-      const cost = seed.price * netSeeds / cropYield;
-      const where = netSeeds<=0 ? 'cultivé focus ~gratuit' : seed.where;
-      return { method:'grow', cost, where };
-    }
-    function craftCost(id, seen){
-      const r = data.byId[id]; if(!r) return null;
-      if(seen.has(id)) return null;
-      const s2 = new Set(seen); s2.add(id);
-      const rrr = rrrFor(r.station);
-      let mat=0, iv=0;
-      for(const ing of r.ingredients){
-        const c = unitCost(ing.id, s2);
-        if(c==null) return null; // un ingrédient sans prix => coût de fabrication inconnu
-        const excluded = (r.excludeFromRRR||[]).includes(ing.id);
-        mat += c.cost * ing.quantity * (excluded ? 1 : (1-rrr));
-        iv  += ivTier(ing.tier) * ing.quantity;
-      }
-      const fee = r.tier>2 ? iv*0.1125*(s.stationFee/100) : 0;
-      return { method:'craft', cost:(mat+fee)/r.quantity, perCraft:mat+fee, fee, rrr };
-    }
-    function methodsFor(id, seen){
-      const opts=[];
-      const b = bestBuy(id); if(b) opts.push({ method:'buy', cost:b.price, where:b.city });
-      const g = growCost(id); if(g) opts.push(g);  // porte déjà son propre `where`
-      const c = craftCost(id, seen); if(c) opts.push({ method:'craft', cost:c.cost, where:null });
-      return opts;
-    }
-
-    // ---------- Lignes du tableau ----------
-    const rows = computed(() => {
-      // dépendances réactives explicites
-      void [s.priceCities, s.craftCity, s.eventBonus, s.stationFee, s.focus, s.premium,
-            s.lang, s.seedSource, s.npcDiscount, JSON.stringify(prices), JSON.stringify(manual),
-            JSON.stringify(methodOverride)];
-      const tax = s.premium ? data.economy.taxPremium : data.economy.taxFree;
-      const out = [];
-      for(const r of data.recipes){
-        if(r.station!=='cook' && r.station!=='alchemist') continue; // seules cibles affichables
-        const rrr = rrrFor(r.station);
-
-        // Décomposition : pour chaque ingrédient, la méthode CHOISIE = choix forcé
-        // (si présent et disponible), sinon la moins chère. Le coût total en découle.
-        let mat = 0, iv = 0, costable = true;
-        const breakdown = r.ingredients.map(ing => {
-          const options = methodsFor(ing.id, new Set([r.id]));
-          const cheapest = options.length ? options.reduce((a,b)=>b.cost<a.cost?b:a) : null;
-          const key = r.id + '|' + ing.id;
-          const ov = methodOverride[key];
-          const forced = ov ? options.find(o=>o.method===ov) : null;
-          const chosenOpt = forced || cheapest;
-          const excluded = (r.excludeFromRRR||[]).includes(ing.id);
-          if(chosenOpt==null) costable = false;
-          else mat += chosenOpt.cost * ing.quantity * (excluded ? 1 : (1-rrr));
-          iv += ivTier(ing.tier) * ing.quantity;
-          return {
-            id: ing.id, name: nameOf(ing.id), qty: ing.quantity, excluded,
-            options: options.map(o=>({method:o.method, cost:o.cost, where:o.where})),
-            chosen: chosenOpt ? chosenOpt.method : null,
-            overridden: !!forced,
-          };
-        });
-
-        const fee = r.tier>2 ? iv*0.1125*(s.stationFee/100) : 0;
-        const craftPerCraft = costable ? mat + fee : null;
-        const costUnit = craftPerCraft!=null ? craftPerCraft / r.quantity : null;
-        const sell = (() => { const b = bestBuy(r.id); return b ? b.price : null; })();
-        const netRevenue = sell!=null ? sell * r.quantity * (1-tax) : null;
-        const profitCraft = (netRevenue!=null && craftPerCraft!=null) ? netRevenue - craftPerCraft : null;
-        const profitUnit = profitCraft!=null ? profitCraft / r.quantity : null;
-        const margin = (profitCraft!=null && craftPerCraft>0) ? (profitCraft/craftPerCraft*100) : null;
-
-        out.push({
-          id:r.id, name:nameOf(r.id), station:r.station, tier:r.tier,
-          enchantment:r.enchantment, quantity:r.quantity,
-          cost:costUnit, craftCost:craftPerCraft, sell, netRevenue,
-          profit:profitUnit, profitCraft, margin,
-          stationFee: fee, rrr,
-          breakdown,
-        });
-      }
-      return out;
-    });
-
-    const totalDisplayable = computed(() => data.recipes.filter(r=>r.station==='cook'||r.station==='alchemist').length);
-
-    const ignoreThreshold = ref(false);
-
-    // Recettes passant les filtres station/tier (avant application du seuil de marge).
-    // Les recettes à prix manquant (margin null) ne dépendent que de showMissing, pas du seuil.
-    const categoryRows = computed(() => rows.value.filter(r => {
-      if(s.stationFilter!=='all' && r.station!==s.stationFilter) return false;
-      if(s.tierFilter!=='all' && r.tier!==s.tierFilter) return false;
-      if(!s.enchFilter.includes(r.enchantment)) return false;
-      if(r.margin==null) return s.showMissing;
-      return true;
-    }));
-
-    // Nombre de recettes (à marge calculable) cachées uniquement à cause du seuil.
-    const hiddenByMargin = computed(() =>
-      categoryRows.value.filter(r => r.margin!=null && r.margin < s.marginThreshold).length);
-
-    const displayRows = computed(() => {
-      let list = categoryRows.value.filter(r => {
-        if(r.margin==null) return true;                       // prix manquant : déjà gérés
-        return ignoreThreshold.value || r.margin >= s.marginThreshold;
-      });
-      const dir = s.sortDir==='asc'?1:-1;
-      const key = s.sortKey;
-      list = list.slice().sort((a,b)=>{
-        let av,bv;
-        if(key==='name'){ av=a.name.toLowerCase(); bv=b.name.toLowerCase(); return av<bv?-dir:av>bv?dir:0; }
-        av = a[key]; bv = b[key];
-        if(av==null) return 1; if(bv==null) return -1;   // null en bas
-        return (av-bv)*dir;
-      });
-      return list;
-    });
-
-    // ---------- UI helpers ----------
-    function sortBy(k){ if(s.sortKey===k){ s.sortDir = s.sortDir==='asc'?'desc':'asc'; } else { s.sortKey=k; s.sortDir = k==='name'?'asc':'desc'; } }
-    const arrow = k => s.sortKey===k ? (s.sortDir==='asc'?'▲':'▼') : '';
-    const toggle = id => expanded[id] = !expanded[id];
-    // Force (ou libère) la méthode d'un ingrédient pour une recette donnée.
-    function chooseMethod(recipeId, ingId, method){
-      const key = recipeId + '|' + ingId;
-      if(methodOverride[key]===method) delete methodOverride[key]; // re-clic = retour auto
-      else methodOverride[key] = method;
-    }
-    const fmt = v => v==null ? '—' : Math.round(v).toLocaleString('fr-FR');
-    const signed = v => (v>0?'+':'') + fmt(v);
-    const profClass = v => v==null ? 'na' : (v>=0?'pos':'neg');
-    const img = id => RENDER(id);
-    function imgErr(ev, id){
-      // repli : on retire l'enchantement (@n) si l'icône enchantée n'existe pas
-      if(ev.target.dataset.fb) return;
-      ev.target.dataset.fb = 1;
-      ev.target.src = RENDER(id.split('@')[0]);
-    }
-    const methodLabel = m => ({buy:'Acheter', grow:'Cultiver', craft:'Fabriquer'})[m] || m;
-
-    return { ready, loading, error, statusText, s, CITIES, prices, manual, expanded,
-      displayRows, totalDisplayable, hiddenByMargin, ignoreThreshold, fetchPrices, setManual,
-      sortBy, arrow, toggle, chooseMethod, fmt, signed, profClass, img, imgErr, methodLabel };
-  }
-}).mount('#app');
-</script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
