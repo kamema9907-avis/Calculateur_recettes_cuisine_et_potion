@@ -61,7 +61,20 @@ export function rrrFor(station, ctx) {
   return 1 - 1 / (1 + bonus / 100);
 }
 
-export const ivTier = t => Math.max(0, Math.pow(2, t) - 2);
+// Frais d'utilisation de la station.
+//
+// La nutrition consommee est fournie par le jeu, recette par recette
+// (champ `nutrition` de data/recipes-data.json). Elle remplace une estimation
+// maison qui la deduisait du tier des ingredients : celle-ci se trompait d'un
+// facteur 8 a 216 selon la recette, et ne pouvait pas distinguer les 9 valeurs
+// de nutrition que prennent les seules recettes T4.
+//
+// Le facteur de calibration absorbe l'incertitude sur l'unite du champ, qui ne
+// peut se trancher qu'en relevant le cout reel en jeu. Les recettes T1 et T2 ont
+// une nutrition nulle, ce qui reproduit d'office l'ancienne regle « tier > 2 ».
+export function fraisStation(r, ctx) {
+  return (r.nutrition || 0) * (ctx.stationFee / 100) * (ctx.facteurNutrition ?? 1);
+}
 
 function npcSeedPrice(tier, ctx) {
   return NPC_SEED[tier] != null ? NPC_SEED[tier] * (ctx.npcDiscount / 100) : null;
@@ -101,15 +114,14 @@ export function craftCost(id, seen, ctx) {
   if (!r || seen.has(id)) return null;
   const s2 = new Set(seen); s2.add(id);
   const rrr = rrrFor(r.station, ctx);
-  let mat = 0, iv = 0;
+  let mat = 0;
   for (const ing of r.ingredients) {
     const c = unitCost(ing.id, s2, ctx);
     if (c == null) return null;   // un ingrédient sans prix => coût inconnu
     const excluded = (r.excludeFromRRR || []).includes(ing.id);
     mat += c.cost * ing.quantity * (excluded ? 1 : (1 - rrr));
-    iv += ivTier(ing.tier) * ing.quantity;
   }
-  const fee = r.tier > 2 ? iv * 0.1125 * (ctx.stationFee / 100) : 0;
+  const fee = fraisStation(r, ctx);
   return { method: 'craft', cost: (mat + fee) / r.quantity, perCraft: mat + fee, fee, rrr };
 }
 
@@ -137,7 +149,7 @@ export function unitCost(id, seen, ctx) {
 // ---------------------------------------------------------------------------
 export function decomposer(r, ctx, methodOverride = {}) {
   const rrr = rrrFor(r.station, ctx);
-  let mat = 0, iv = 0, costable = true;
+  let mat = 0, costable = true;
   const breakdown = r.ingredients.map(ing => {
     const options = methodsFor(ing.id, new Set([r.id]), ctx);
     const cheapest = options.length ? options.reduce((a, b) => b.cost < a.cost ? b : a) : null;
@@ -147,7 +159,6 @@ export function decomposer(r, ctx, methodOverride = {}) {
     const excluded = (r.excludeFromRRR || []).includes(ing.id);
     if (chosenOpt == null) costable = false;
     else mat += chosenOpt.cost * ing.quantity * (excluded ? 1 : (1 - rrr));
-    iv += ivTier(ing.tier) * ing.quantity;
     return {
       id: ing.id, qty: ing.quantity, excluded,
       options: options.map(o => ({ method: o.method, cost: o.cost, where: o.where })),
@@ -157,7 +168,7 @@ export function decomposer(r, ctx, methodOverride = {}) {
       overridden: !!forced,
     };
   });
-  const fee = r.tier > 2 ? iv * 0.1125 * (ctx.stationFee / 100) : 0;
+  const fee = fraisStation(r, ctx);
   const craftPerCraft = costable ? mat + fee : null;
   return {
     breakdown, rrr, stationFee: fee,

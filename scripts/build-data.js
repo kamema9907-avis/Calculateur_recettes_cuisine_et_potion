@@ -60,6 +60,16 @@ const includedRecipes = {};       // id -> recette (cibles + sous-recettes)
 const referencedItems = new Set(); // tous les ids a nommer
 const usedFarm = {};              // adultId -> entree farm (cultures utilisees)
 
+// Le dump ajoute un suffixe d'enchantement aux extraits arcaniques
+// (T1_ALCHEMY_EXTRACT_LEVEL1@1) alors que le niveau est deja porte par
+// LEVEL1/2/3. Ces identifiants n'existent pas sur le marche : verifie via
+// l'API de prix, seule la forme sans suffixe a des offres (4996 silver contre
+// aucune cotation). Sans cette normalisation, les 120 recettes de potions
+// enchantees ont un ingredient sans prix et deviennent incalculables.
+function normaliserId(id) {
+  return /ALCHEMY_EXTRACT_LEVEL\d+@\d+$/.test(id) ? id.split('@')[0] : id;
+}
+
 function slimRecipe(r) {
   return {
     id: r.id,
@@ -67,9 +77,13 @@ function slimRecipe(r) {
     tier: r.tier,
     enchantment: r.enchantment,
     quantity: r.quantity,
-    excludeFromRRR: r.excludeFromRRR || [],
+    // Nutrition consommee par craft, telle que fournie par le jeu. Remplace
+    // l'estimation maison qui la deduisait du tier des ingredients et se
+    // trompait d'un facteur 8 a 216 selon la recette.
+    nutrition: r.nutrition || 0,
+    excludeFromRRR: (r.excludeFromRRR || []).map(normaliserId),
     ingredients: r.ingredients.map(i => ({
-      id: i.id,
+      id: normaliserId(i.id),
       tier: i.tier,
       enchantment: i.enchantment,
       quantity: i.quantity,
@@ -81,7 +95,7 @@ const stack = [];
 for (const r of targets) {
   includedRecipes[r.id] = slimRecipe(r);
   referencedItems.add(r.id);
-  for (const ing of r.ingredients) stack.push(ing.id);
+  for (const ing of r.ingredients) stack.push(normaliserId(ing.id));
 }
 
 const visited = new Set();
@@ -101,7 +115,7 @@ while (stack.length) {
   const rec = recipeById[id];
   if (rec && !includedRecipes[id]) {
     includedRecipes[id] = slimRecipe(rec);
-    for (const ing of rec.ingredients) stack.push(ing.id);
+    for (const ing of rec.ingredients) stack.push(normaliserId(ing.id));
   }
 }
 

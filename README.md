@@ -75,8 +75,11 @@ Les appels à l'API de prix fonctionnent depuis GitHub Pages (CORS autorisé, to
   `bonus = 18 (base) + 15 (spécialité ville) + 59 (focus) + 0/10/20 (événement)`.
   Spécialité : **Caerleon = cuisine**, **Brecilien = potions**.
   Les ingrédients listés dans `excludeFromRRR` ne sont pas retournés.
-- **Frais de station** = `Item Value × 0,1125 × tarif/100` (tarif par défaut **400**,
-  Item Value déduit des tiers ; *à calibrer en jeu*).
+- **Frais de station** = `nutrition de la recette × tarif/100 × calibration`. La nutrition
+  vient des données du jeu, **recette par recette** (champ `nutrition`). Elle a remplacé une
+  estimation déduite du tier des ingrédients qui se trompait d'un facteur **8 à 216** selon
+  la recette. Le multiplicateur de calibration (défaut **1**) reste *à ajuster en relevant le
+  coût réel en jeu* : il absorbe l'incertitude sur l'unité du champ.
 - **Profit** = `(prix de vente × quantité produite − taxe) − coût`, taxe **6,5 %** (Premium)
   ou **10,5 %**.
 - **Marge** = `profit ÷ coût`. Le tableau ne montre que les recettes au-dessus du seuil
@@ -160,6 +163,29 @@ Modules ES natifs, **aucun build**. Ils imposent en revanche un serveur HTTP :
 
 ---
 
+## 🔍 Audit des données (version 4)
+
+Constantes croisées avec le dépôt wiki `Albion_Analyse_site_web` (44 323 entrées) et la
+librairie de dumps du jeu.
+
+**Confirmé exact :** la formule du RRR, les bonus 18 / +15 / +59, Caerleon = cuisine et
+Brecilien = potions, les 377 noms français, et l'exclusion des artefacts du retour de
+ressources (36 recettes à token, aucune erreur).
+
+**Deux erreurs corrigées :**
+
+1. **Identifiants d'extraits arcaniques.** Le dump nomme l'ingrédient
+   `T1_ALCHEMY_EXTRACT_LEVEL1@1`, alors que le marché ne connaît que
+   `T1_ALCHEMY_EXTRACT_LEVEL1` — le niveau est déjà porté par `LEVEL1/2/3`. Ces identifiants
+   n'ayant jamais de prix, **120 recettes de potions enchantées étaient incalculables** et
+   disparaissaient du plan. `build-data.js` normalise désormais l'identifiant.
+2. **Frais de station** (voir ci-dessus) : nutrition réelle au lieu d'une Item Value inventée.
+
+**Non vérifiable faute de source :** prix des graines PNJ, rendement des cultures
+(`farming.json` ne couvre que les animaux), taxes de vente, et Item Value des consommables.
+Le dépôt wiki couvre l'équipement, pas la cuisine ni l'alchimie : `recipes.json` ne contient
+aucune recette de plat ou de potion.
+
 ## ⚠️ Limites assumées
 
 - **Profondeur du carnet d'ordres** : l'API ne publie que le prix de la première unité.
@@ -173,3 +199,7 @@ Modules ES natifs, **aucun build**. Ils imposent en revanche un serveur HTTP :
   scrutés par beaucoup de joueurs avec les mêmes chiffres.
 - **Impact de tes propres ordres** : injecter une part notable du volume quotidien fait
   baisser le prix. Le plan suppose un prix constant, ce qui reste optimiste à la marge.
+- **Capacité de fabrication** : chaque craft consomme la moitié de la valeur de l'objet
+  produit dans la capacité du bâtiment, qui ne se recharge complètement qu'en 24 h. Les
+  grosses quantités du plan peuvent donc demander plusieurs stations. Non modélisé : la
+  capacité de départ des bâtiments n'est ni dans le wiki ni dans les dumps.

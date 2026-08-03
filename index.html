@@ -204,6 +204,13 @@
       </div>
 
       <div class="field">
+        <label>Calibration des frais de station</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" min="0" step="0.5" v-model.number="s.facteurNutrition"> <span>×</span>
+        </div>
+      </div>
+
+      <div class="field">
         <label>Source des graines (culture)</label>
         <select v-model="s.seedSource">
           <option value="cheapest">Le moins cher (PNJ vs marché)</option>
@@ -376,7 +383,10 @@
   <p class="legend">
     💡 Coût = chemin le moins cher pour chaque ingrédient (achat marché, culture depuis graine, ou fabrication), RRR déduit selon ville/focus/événement.
     Culture : coût = prix graine × (1 − taux de retour) ÷ rendement (≈9 premium). Arrosée au focus, la graine se rembourse → coût ≈ 0.
-    Frais de station = Item Value × 0,1125 × tarif/100 (calibrage à affiner). Profit = vente nette (taxe {{ s.premium?'6,5':'10,5' }}%) − coût de fabrication.
+    Frais de station = <b>nutrition réelle de la recette</b> × tarif/100 × calibration ({{ s.facteurNutrition }}×).
+    La nutrition vient des données du jeu, recette par recette ; elle remplace une estimation déduite du tier
+    qui se trompait d'un facteur 8 à 216. Le multiplicateur de calibration reste à ajuster en relevant le coût réel en jeu.
+    Profit = vente nette (taxe {{ s.premium?'6,5':'10,5' }}%) − coût de fabrication.
     <br>⚠️ Ce tableau classe par marge et ignore le volume échangé : une marge de 60% sur un item qui se vend 6 fois par jour ne rapporte rien.
     Pour un plan exécutable, va dans l'onglet <b>Plan de profit</b>.
   </p>
@@ -726,6 +736,9 @@
       points et d'un cycle de 22 h.
       <br>❗ L'API ne publie pas la profondeur du carnet d'ordres. Acheter en masse fait monter ton propre prix
       d'achat : la borne sur la liquidité des ingrédients limite ce risque sans l'éliminer.
+      <br>❗ La <b>capacité de fabrication</b> n'est pas modélisée : chaque craft consomme la moitié de la valeur
+      de l'objet produit dans la capacité du bâtiment, qui ne se recharge complètement qu'en 24 h. Les grosses
+      quantités ci-dessus peuvent donc demander plusieurs stations, ou d'étaler sur plusieurs jours.
     </p>
   </template>
   <div v-else class="empty">Clique sur <b>Calculer le plan</b>.</div>

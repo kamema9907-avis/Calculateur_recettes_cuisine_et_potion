@@ -33,6 +33,7 @@ createApp({
 
     const s = reactive({
       priceCities: [...CITIES], craftCity: 'auto', eventBonus: 0, stationFee: 400,
+      facteurNutrition: 1,     // calibration des frais de station, à ajuster en jeu
       marginThreshold: 20, stationFilter: 'all', tiers: [...TIERS], enchFilter: [...ENCH],
       lang: 'fr', focus: false, premium: true, showMissing: true,
       seedSource: 'cheapest', npcDiscount: 100, sortKey: 'margin', sortDir: 'desc',
@@ -153,6 +154,7 @@ createApp({
         byId: data.byId, farm: data.farm, prices, manual,
         villesAchat: s.priceCities, craftCity: s.craftCity,
         eventBonus: s.eventBonus, stationFee: s.stationFee,
+        facteurNutrition: s.facteurNutrition,
         focus: s.focus, premium: s.premium,
         seedSource: s.seedSource, npcDiscount: s.npcDiscount,
         autoriserCulture: true, maxAgeH: null,
@@ -165,6 +167,7 @@ createApp({
         byId: data.byId, farm: data.farm, prices, manual,
         villesAchat: p.villesAchat, craftCity: p.craftCity,
         eventBonus: s.eventBonus, stationFee: s.stationFee,
+        facteurNutrition: s.facteurNutrition,
         focus: false, premium: s.premium,
         seedSource: s.seedSource, npcDiscount: s.npcDiscount,
         autoriserCulture: false, maxAgeH: p.maxAgeH,
@@ -174,7 +177,7 @@ createApp({
     // ================= ONGLET CALCULATEUR =================
     const rows = computed(() => {
       void [pricesVersion.value, s.priceCities, s.craftCity, s.eventBonus, s.stationFee,
-        s.focus, s.premium, s.lang, s.seedSource, s.npcDiscount,
+        s.facteurNutrition, s.focus, s.premium, s.lang, s.seedSource, s.npcDiscount,
         JSON.stringify(manual), JSON.stringify(methodOverride)];
       const ctx = ctxCalc();
       const tax = s.premium ? data.economy.taxPremium : data.economy.taxFree;
@@ -265,7 +268,8 @@ createApp({
     // Les réglages partagés qui pèsent sur le coût sont suivis explicitement, pour
     // ne pas recalculer le plan à chaque frappe dans l'onglet Calculateur.
     let timerPlan = null;
-    watch([p, () => s.premium, () => s.stationFee, () => s.eventBonus], () => {
+    watch([p, () => s.premium, () => s.stationFee, () => s.eventBonus,
+      () => s.facteurNutrition], () => {
       if (!plan.value) return;
       clearTimeout(timerPlan);
       timerPlan = setTimeout(calculerPlan, 250);
