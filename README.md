@@ -131,16 +131,26 @@ Les réglages sont mémorisés dans le navigateur ; prix et volumes sont mis en 
 
 ## 🔄 Régénérer les données après un patch du jeu
 
-Les recettes/cultures/noms viennent de la librairie voisine
-`../Albion_librairie_des_recettes_du_jeu`. Pour reconstruire le fichier réduit
-`data/recipes-data.json` :
+Les recettes, cultures et noms viennent du dossier `base/` de la librairie voisine
+`../Albion_librairie_des_recettes_du_jeu`, alimenté par les dumps officiels du jeu
+(`ao-data/ao-bin-dumps`, republiés tous les 3 à 5 jours). Pour reconstruire le
+fichier réduit `data/recipes-data.json` :
 
 ```
 node scripts/build-data.js
 ```
 
-Le script extrait uniquement les recettes cook + alchemist (et leurs sous-recettes),
-les cultures utilisées et les noms FR/EN concernés (~180 Ko au lieu de ~12 Mo).
+Le script extrait uniquement les recettes cook, alchemist et mill (et leurs
+sous-recettes), les cultures utilisées et les noms FR/EN concernés (~200 Ko au lieu
+de ~23 Mo).
+
+**Migration du 2026-09-20.** La librairie lisait `Jaccak/AlbionRecipes`, dépôt mort
+depuis novembre 2024. Le format de `recipes-data.json` n'a pas changé et le moteur
+de calcul n'a pas été touché : sur les 384 recettes communes, aucun écart
+d'ingrédients, de quantité produite ni d'exclusion du retour de ressources. Deux
+corrections tout de même, l'ancienne source se trompant : la soupe T5 coûte 6,48 de
+nutrition et non 64,8, et la farine et les beurres se fabriquent au **Moulin** et non
+chez le Cuisinier, d'où la troisième station acceptée par `ciblesVendables()`.
 
 ---
 
