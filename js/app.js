@@ -96,8 +96,12 @@ createApp({
       for (const f of Object.values(data.farm)) set.add(f.seedId);
       return [...set];
     }
+    // Le Moulin produit la farine et les trois beurres. L'ancienne source les
+    // rangeait à tort chez le Cuisinier, si bien qu'ils apparaissaient déjà
+    // ici ; les dumps du jeu nomment leur vraie station, d'où ce troisième cas.
+    const STATIONS_VENDABLES = ['cook', 'alchemist', 'mill'];
     const ciblesVendables = () => data.recipes
-      .filter(r => r.station === 'cook' || r.station === 'alchemist').map(r => r.id);
+      .filter(r => STATIONS_VENDABLES.includes(r.station)).map(r => r.id);
 
     async function fetchPrices(forcer = false) {
       if (!ready.value) return;
