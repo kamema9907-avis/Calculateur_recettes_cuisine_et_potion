@@ -3,7 +3,7 @@
  * -----------------------------------------------------------------------------
  * Genere le fichier de donnees REDUIT consomme par index.html.
  *
- * Source : ../Albion_librairie_des_recettes_du_jeu/base
+ * Source : ../../donnees/base
  *          (dumps officiels du jeu, ao-data/ao-bin-dumps)
  * Sortie : data/recipes-data.json (quelques centaines de Ko)
  *
@@ -40,7 +40,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const LIB = path.resolve(__dirname, '..', '..', 'Albion_librairie_des_recettes_du_jeu', 'base');
+const LIB = path.resolve(__dirname, '..', '..', '..', 'donnees', 'base');
 const OUT = path.resolve(__dirname, '..', 'data', 'recipes-data.json');
 
 function load(rel) {

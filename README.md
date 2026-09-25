@@ -243,7 +243,7 @@ L'onglet ne charge l'historique que des **170 objets** qui le concernent, contre
 ## 🔄 Régénérer les données après un patch du jeu
 
 Les recettes, cultures et noms viennent du dossier `base/` de la librairie voisine
-`../Albion_librairie_des_recettes_du_jeu`, alimenté par les dumps officiels du jeu
+`../../donnees`, alimenté par les dumps officiels du jeu
 (`ao-data/ao-bin-dumps`, republiés tous les 3 à 5 jours). Pour reconstruire le
 fichier réduit `data/recipes-data.json` :
 
@@ -328,7 +328,7 @@ Modules ES natifs, **aucun build**. Ils imposent en revanche un serveur HTTP :
 
 ## 🔍 Audit des données (version 4)
 
-Constantes croisées avec le dépôt wiki `Albion_Analyse_site_web` (44 323 entrées) et la
+Constantes croisées avec le dépôt wiki `Albion/reference` (44 323 entrées) et la
 librairie de dumps du jeu.
 
 **Confirmé exact :** la formule du RRR, les bonus 18 / +15 / +59, Caerleon = cuisine et
