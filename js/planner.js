@@ -30,13 +30,20 @@ function collecterAchats(recetteId, qteFinie, ctx, acc = {}, seen = new Set()) {
   if (!r || seen.has(recetteId)) return acc;
   const s2 = new Set(seen); s2.add(recetteId);
   const rrr = rrrFor(r.station, ctx);
-  const nbCrafts = qteFinie / r.quantity;
 
-  for (const ing of r.ingredients) {
+  // La liste de courses doit nommer la variante sur laquelle le coût a été
+  // calculé. Sans ce rappel à craftCost, elle enverrait acheter un gardon
+  // rouge (première variante des morceaux de poisson) alors que le prix
+  // retenu vient peut-être d'un crabe mantou, trente fois plus productif.
+  const c = craftCost(recetteId, seen, ctx);
+  const v = (c && c.variant) || r;
+  const nbCrafts = qteFinie / v.quantity;
+
+  for (const ing of v.ingredients) {
     const options = methodsFor(ing.id, s2, ctx);
     if (!options.length) continue;
     const choisi = options.reduce((a, b) => b.cost < a.cost ? b : a);
-    const exclu = (r.excludeFromRRR || []).includes(ing.id);
+    const exclu = (v.excludeFromRRR || []).includes(ing.id);
     const besoin = ing.quantity * nbCrafts * (exclu ? 1 : (1 - rrr));
 
     if (choisi.method === 'craft') {
@@ -47,6 +54,37 @@ function collecterAchats(recetteId, qteFinie, ctx, acc = {}, seen = new Set()) {
     }
   }
   return acc;
+}
+
+// ---------------------------------------------------------------------------
+//  Prix auquel on accepte de valoriser une vente dans une ville donnée.
+//
+//  Le juge de paix : on ne valorise jamais au-dessus du prix réellement
+//  transigé. `sell_price_min` est le prix DEMANDÉ le plus bas, qu'un joueur
+//  isolé peut fixer à n'importe quoi ; relevé en production, un plat affiché
+//  39 130 000 pour 88 852 réels. Un ordre isolé à 440× le prix réel ne vaut
+//  pas 440×.
+//
+//  Extrait de construireLignes pour que l'onglet Poissons applique la même
+//  prudence sans la réécrire : deux copies divergeraient au premier ajustement.
+//  Retourne soit { motif, detail } quand la vente n'est pas valorisable, soit
+//  le prix retenu et de quoi l'expliquer à l'écran.
+// ---------------------------------------------------------------------------
+export function prixVente(id, ville, ctx, volumes, opts = {}) {
+  const { undercut = 0.03, volumeMin = 0, seuilAberrant = 1.3 } = opts;
+  const p = (ctx.prices[id] || {})[ville];
+  if (!p || !(p.sell > 0)) return { motif: MOTIFS.pasDePrix };
+  if (ctx.maxAgeH != null && p.ageH > ctx.maxAgeH)
+    return { motif: MOTIFS.prixPerime, detail: Math.round(p.ageH) + ' h' };
+  const h = (volumes[id] || {})[ville];
+  if (!h || !h.avgPrice) return { motif: MOTIFS.pasHistorique };
+  if (h.vol < volumeMin) return { motif: MOTIFS.volumeFaible, detail: Math.round(h.vol) + '/jour' };
+  const ratio = p.sell / h.avgPrice;
+  return {
+    prixAffiche: p.sell, prixReel: h.avgPrice,
+    prixRetenu: Math.min(p.sell, h.avgPrice) * (1 - undercut),
+    ratio, aberrant: ratio > seuilAberrant, vol: h.vol, ageH: p.ageH,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -78,35 +116,24 @@ export function construireLignes(ctx, volumes, opts) {
     if (!c) { noter(r.id, null, MOTIFS.coutInconnu, null); continue; }
 
     for (const ville of villesVente) {
-      const p = (ctx.prices[r.id] || {})[ville];
-      if (!p || !(p.sell > 0)) { noter(r.id, ville, MOTIFS.pasDePrix, null); continue; }
-      if (ctx.maxAgeH != null && p.ageH > ctx.maxAgeH) {
-        noter(r.id, ville, MOTIFS.prixPerime, Math.round(p.ageH) + ' h'); continue;
-      }
-      const h = (volumes[r.id] || {})[ville];
-      if (!h || !h.avgPrice) { noter(r.id, ville, MOTIFS.pasHistorique, null); continue; }
-      if (h.vol < volumeMin) {
-        noter(r.id, ville, MOTIFS.volumeFaible, Math.round(h.vol) + '/jour'); continue;
-      }
+      const v = prixVente(r.id, ville, ctx, volumes, { undercut, volumeMin, seuilAberrant });
+      if (v.motif) { noter(r.id, ville, v.motif, v.detail || null); continue; }
 
-      // Le juge de paix : on ne valorise jamais au-dessus du prix réellement
-      // transigé. Un ordre isolé à 440x le prix réel ne vaut pas 440x.
-      const ratio = p.sell / h.avgPrice;
-      const prixRetenu = Math.min(p.sell, h.avgPrice) * (1 - undercut);
-      const profitU = prixRetenu * (1 - taxe) - c.cost;
-
+      const profitU = v.prixRetenu * (1 - taxe) - c.cost;
       if (profitU <= 0) {
         noter(r.id, ville, MOTIFS.nonRentable,
-          ratio > seuilAberrant ? 'prix affiché ' + ratio.toFixed(0) + '× le réel' : null);
+          v.aberrant ? 'prix affiché ' + v.ratio.toFixed(0) + '× le réel' : null);
         continue;
       }
 
       lignes.push({
         id: r.id, station: r.station, tier: r.tier, enchantment: r.enchantment,
-        quantity: r.quantity, villeVente: ville,
-        coutU: c.cost, prixAffiche: p.sell, prixReel: h.avgPrice, prixRetenu,
-        ratio, aberrant: ratio > seuilAberrant,
-        vol: h.vol, ageH: p.ageH,
+        // Celle de la variante retenue par craftCost, pas celle de la recette :
+        // l'encadré du plan en déduit le nombre de crafts à lancer.
+        quantity: c.quantity != null ? c.quantity : r.quantity, villeVente: ville,
+        coutU: c.cost, prixAffiche: v.prixAffiche, prixReel: v.prixReel, prixRetenu: v.prixRetenu,
+        ratio: v.ratio, aberrant: v.aberrant,
+        vol: v.vol, ageH: v.ageH,
         profitU, roi: profitU / c.cost,
       });
     }

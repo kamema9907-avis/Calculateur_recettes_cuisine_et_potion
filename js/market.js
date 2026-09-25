@@ -66,8 +66,14 @@ function ecrire(cle, signature, data) {
     localStorage.setItem(cle, JSON.stringify({ t: Date.now(), signature, data }));
   } catch { /* quota dépassé : on se passe de cache, ce n'est pas bloquant */ }
 }
+export const CLE_VOLUMES_POISSONS = 'albion.volumes.poissons';
+
 export function viderCache() {
-  try { localStorage.removeItem('albion.prix'); localStorage.removeItem('albion.volumes'); } catch {}
+  try {
+    localStorage.removeItem('albion.prix');
+    localStorage.removeItem('albion.volumes');
+    localStorage.removeItem(CLE_VOLUMES_POISSONS);
+  } catch {}
 }
 export function ageCache(cle) {
   try {
@@ -121,10 +127,14 @@ export async function chargerPrix(ids, villes, { onProgress, forcer } = {}) {
 //     La pondération compte : une journée à 3 ventes ne doit pas peser autant
 //     qu'une journée à 3000 dans la moyenne.
 // ---------------------------------------------------------------------------
-export async function chargerVolumes(ids, villes, { onProgress, forcer, jours = 7 } = {}) {
+// `cleCache` sépare les jeux d'identifiants qui ne se recouvrent pas. L'onglet
+// Plan demande l'historique de plus de 500 objets, l'onglet Poissons d'environ
+// 170 : sans clés distinctes le second écraserait le cache du premier, et
+// chacun rechargerait l'API à chaque va-et-vient entre les deux onglets.
+export async function chargerVolumes(ids, villes, { onProgress, forcer, jours = 7, cleCache = 'albion.volumes' } = {}) {
   const signature = villes.join(',') + '|' + ids.length + '|' + jours;
   if (!forcer) {
-    const cache = lire('albion.volumes', TTL_VOLUMES, signature);
+    const cache = lire(cleCache, TTL_VOLUMES, signature);
     if (cache) return { data: cache, depuisCache: true };
   }
   const loc = encodeURIComponent(villes.join(','));
@@ -151,6 +161,6 @@ export async function chargerVolumes(ids, villes, { onProgress, forcer, jours = 
       };
     }
   }
-  ecrire('albion.volumes', signature, out);
+  ecrire(cleCache, signature, out);
   return { data: out, depuisCache: false };
 }

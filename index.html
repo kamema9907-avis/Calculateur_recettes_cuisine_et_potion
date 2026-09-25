@@ -34,6 +34,20 @@
   .raccourci:hover{text-decoration:underline}
   .cities{display:flex;flex-wrap:wrap;gap:5px 10px}
   .cities label{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap}
+  /* Le bloc « écarter par contenu » tient sur toute la largeur : huit cases
+     à libellé long ne rentrent pas dans une colonne de 200px. */
+  .field.large{grid-column:1/-1}
+  .contenu{display:flex;flex-wrap:wrap;gap:6px 16px}
+  .contenu label{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap}
+  .contenu label.off{opacity:.5;text-decoration:line-through}
+  .contenu .nb{color:var(--muted);font-size:11px}
+  .contenu-note{font-size:11px;color:var(--muted);margin-top:2px}
+  /* Onglet Poissons : la colonne gagnante est mise en avant, et un délai
+     d'écoulement de plus d'une semaine vaut un avertissement. */
+  td.gagnant{background:rgba(212,175,55,.10);box-shadow:inset 2px 0 0 var(--gold)}
+  .alerte{color:var(--red)}
+  .cell-item{display:flex;align-items:center;gap:8px}
+  .cell-item img{width:28px;height:28px;flex:none}
   select,input[type=number]{background:var(--bg);border:1px solid var(--line2);color:var(--txt);
     padding:7px 8px;border-radius:6px;font-size:13px;width:100%}
   input[type=number]{width:110px}
@@ -70,6 +84,8 @@
   .pill{font-size:10px;padding:1px 6px;border-radius:8px;border:1px solid var(--line2);color:var(--muted)}
   .pill.cook{color:#ffcf7a;border-color:#5a4527}
   .pill.alch{color:#b69cff;border-color:#3e3466}
+  .pill.mill{color:#d9c89a;border-color:#4a4330}
+  .pill.butcher{color:#ff9e9e;border-color:#5e3333}
   .caret{display:inline-block;width:14px;color:var(--muted)}
 
   /* ---- Detail ---- */
@@ -163,6 +179,7 @@
   <div class="tabs">
     <div class="tab" :class="{on:onglet==='calc'}" @click="onglet='calc'">📊 Calculateur</div>
     <div class="tab" :class="{on:onglet==='plan'}" @click="onglet='plan'">🎯 Plan de profit</div>
+    <div class="tab" :class="{on:onglet==='fish'}" @click="onglet='fish'">🐟 Poissons</div>
   </div>
 
   <!-- ==================== ONGLET CALCULATEUR ==================== -->
@@ -239,6 +256,8 @@
           <option value="all">Toutes</option>
           <option value="cook">Cuisine</option>
           <option value="alchemist">Alchimie</option>
+          <option value="mill">Moulin</option>
+          <option value="butcher">Boucher</option>
         </select>
       </div>
 
@@ -272,6 +291,30 @@
           <option value="fr">Français</option>
           <option value="en">English</option>
         </select>
+      </div>
+
+      <div class="field large">
+        <label>Écarter par contenu — décocher retire toute recette qui en a besoin
+          <a href="#" class="raccourci" @click.prevent="cocherTout(s,'contenu',CONTENU)">tout garder</a> ·
+          <a href="#" class="raccourci" @click.prevent="cocherAucun(s,'contenu')">tout écarter</a>
+        </label>
+        <div class="contenu">
+          <label v-for="e in ETIQUETTES" :key="e.cle" :class="{off:!s.contenu.includes(e.cle)}">
+            <input type="checkbox" :value="e.cle" v-model="s.contenu">
+            <span>{{ e.icone }} {{ e.label }}</span>
+            <span class="nb">{{ compteEtiquettes[e.cle] }}</span>
+          </label>
+        </div>
+        <div class="contenu-note" v-if="ecarteesParContenu">
+          🚫 {{ ecarteesParContenu }} recette(s) écartée(s) par ces cases.
+          Une recette disparaît dès qu'<b>une seule</b> de ses étiquettes est décochée :
+          la soupe de palourdes noirebières enchantée en porte six.
+        </div>
+        <div class="contenu-note" v-else>
+          Les étiquettes suivent le chemin que le moteur retient réellement. Si la sauce de
+          poisson est moins chère à l'achat qu'à la fabrication, la recette qui en consomme
+          garde 🫙 mais perd 🐟 et 🥩, que tu n'as plus à te procurer.
+        </div>
       </div>
     </div>
 
@@ -307,7 +350,7 @@
                   <div class="item-name">{{ r.name }}
                     <span v-if="r.enchantment" class="ench">@{{ r.enchantment }}</span></div>
                   <div class="item-id">
-                    <span class="pill" :class="r.station==='cook'?'cook':'alch'">{{ r.station==='cook'?'Cuisine':'Alchimie' }}</span>
+                    <span class="pill" :class="r.station==='alchemist'?'alch':r.station">{{ stationLabel(r.station) }}</span>
                     · produit ×{{ r.quantity }} · <span class="item-id">{{ r.id }}</span>
                   </div>
                 </div>
@@ -606,7 +649,7 @@
                     </span>
                   </div>
                   <div class="item-id">
-                    <span class="pill" :class="l.station==='cook'?'cook':'alch'">{{ l.station==='cook'?'Cuisine':'Alchimie' }}</span>
+                    <span class="pill" :class="l.station==='alchemist'?'alch':l.station">{{ stationLabel(l.station) }}</span>
                     · fabriquer {{ Math.ceil(l.q / l.quantity) }} craft(s) · {{ Math.round(l.vol) }} ventes/j sur ce marché
                     · prix relevé il y a {{ l.ageH.toFixed(1) }} h
                   </div>
@@ -742,6 +785,173 @@
     </p>
   </template>
   <div v-else class="empty">Clique sur <b>Calculer le plan</b>.</div>
+  </template>
+
+  <!-- ==================== ONGLET POISSONS ==================== -->
+  <template v-if="onglet==='fish'">
+  <div class="settings">
+    <div class="settings-grid">
+      <div class="field">
+        <label>Je suis à — ville de vente <b>et</b> de craft</label>
+        <select v-model="f.ville">
+          <option v-for="c in CITIES" :key="c" :value="c">{{ c }}</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Poissons pêchés (met tout à l'échelle)</label>
+        <input type="number" min="1" step="1" v-model.number="f.quantite">
+      </div>
+
+      <div class="field">
+        <label>Part du volume quotidien que je capte</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" min="1" max="100" step="5" v-model.number="f.partVolume"> <span>%</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Undercut appliqué au prix</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" min="0" max="20" step="1" v-model.number="f.undercut"> <span>%</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Rareté
+          <a href="#" class="raccourci" @click.prevent="cocherTout(f,'rarete',RARETES)">tout</a> ·
+          <a href="#" class="raccourci" @click.prevent="cocherAucun(f,'rarete')">aucun</a>
+        </label>
+        <div class="cities">
+          <label v-for="r in RARETES" :key="r">
+            <input type="checkbox" :value="r" v-model="f.rarete"> {{ r }}
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="row-inline">
+      <label class="toggle"><input type="checkbox" v-model="f.achatPartout">
+        Acheter les autres ingrédients <b>partout</b> (sinon, seulement à {{ f.ville }})</label>
+      <button @click="fetchVolumesPoissons(true)" :disabled="chargementVolumes">
+        {{ chargementVolumes ? 'Chargement…' : '↻ Rafraîchir l\'historique' }}</button>
+      <span class="status" :class="{err:error}">{{ error || statusText }}</span>
+    </div>
+  </div>
+
+  <div v-if="!volumesPoissonsCharges" class="bloc">
+    <h3>🐟 Vendre le poisson ou le transformer ?</h3>
+    <p class="legend">
+      Pour chaque poisson pêché, ce tableau compare trois sorties : le <b>vendre tel quel</b>,
+      le <b>découper en morceaux</b> au Boucher, ou le <b>cuisiner en son plat dédié</b>.
+      Les montants sont des <b>revenus nets de taxe</b> et non des marges : le poisson est déjà
+      dans ton sac, son coût d'acquisition est nul.
+      <br>Il faut charger l'historique des transactions pour ne pas valoriser un ordre fantôme :
+      170 objets, c'est bien plus court que le Plan.
+    </p>
+    <button @click="fetchVolumesPoissons()" :disabled="chargementVolumes">
+      {{ chargementVolumes ? 'Chargement…' : '📊 Charger l\'historique des poissons' }}</button>
+  </div>
+
+  <template v-else>
+  <div class="bloc">
+    <b>{{ analysePoissons.couverture.comparables }}</b> poissons sur
+    {{ analysePoissons.couverture.total }} ont au moins deux débouchés chiffrables à
+    <b>{{ f.ville }}</b>. Retour de ressources appliqué à la cuisine :
+    <b>{{ (analysePoissons.rrr*100).toFixed(1) }}%</b>, soit
+    <b>{{ (1/(1-analysePoissons.rrr)).toFixed(2) }}</b> plat(s) par poisson.
+    <div class="legend" style="margin-top:6px">
+      Poissons cotés, ville par ville :
+      <span v-for="(c,i) in couverturePoissons" :key="c.ville">
+        <template v-if="i">· </template><b>{{ c.ville }}</b> {{ c.n }}/{{ c.total }}
+      </span>
+    </div>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="left" @click="trierPoissons('nom')">Poisson <span class="arrow">{{ flechePoissons('nom') }}</span></th>
+          <th @click="trierPoissons('tier')">Tier <span class="arrow">{{ flechePoissons('tier') }}</span></th>
+          <th @click="trierPoissons('morceauxParPoisson')">Morceaux /u <span class="arrow">{{ flechePoissons('morceauxParPoisson') }}</span></th>
+          <th @click="trierPoissons('brut')">Vendre <span class="arrow">{{ flechePoissons('brut') }}</span></th>
+          <th @click="trierPoissons('morceaux')">En morceaux <span class="arrow">{{ flechePoissons('morceaux') }}</span></th>
+          <th @click="trierPoissons('plat')">En plat <span class="arrow">{{ flechePoissons('plat') }}</span></th>
+          <th class="left" @click="trierPoissons('meilleur')">Verdict <span class="arrow">{{ flechePoissons('meilleur') }}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="l in lignesPoissons" :key="l.id">
+          <td class="left">
+            <div class="cell-item">
+              <img :src="img(l.id)" @error="imgErr" alt="">
+              <div>
+                <div>{{ nameOf(l.id) }}</div>
+                <div class="item-id">{{ l.eau }} · {{ l.biome }} · {{ l.rarete }}</div>
+              </div>
+            </div>
+          </td>
+          <td>T{{ l.tier }}</td>
+          <td>×{{ l.morceauxParPoisson }}</td>
+
+          <td v-for="cle in ['brut','morceaux','plat']" :key="cle"
+              :class="{gagnant: l.meilleur===cle && !l.seule}">
+            <template v-if="!l[cle]">
+              <span class="na">pas de plat</span>
+            </template>
+            <template v-else-if="l[cle].motif">
+              <span class="na" :title="l[cle].detail || ''">{{ l[cle].motif }}</span>
+            </template>
+            <template v-else>
+              <b :class="profClass(l[cle].revenu)">{{ fmtM(l[cle].revenu) }}</b>
+              <div class="item-id">
+                <span v-if="l[cle].jours!=null" :class="{alerte:l[cle].jours>7}">{{ joursFmt(l[cle].jours) }}</span>
+                <span v-if="l[cle].aberrant" :title="'prix affiché ' + l[cle].ratio.toFixed(0) + '× le réel'">⚠️</span>
+                <span v-if="cle==='plat'"> · {{ nameOf(l[cle].id) }}<template v-if="l[cle].enchantment">.{{ l[cle].enchantment }}</template></span>
+              </div>
+            </template>
+          </td>
+
+          <td class="left">
+            <template v-if="l.seule">
+              <span class="na">seule option chiffrée</span>
+            </template>
+            <template v-else-if="l.meilleur">
+              <b>{{ {brut:'Vendre', morceaux:'Découper', plat:'Cuisiner'}[l.meilleur] }}</b>
+              <span v-if="l.ecart!=null" class="item-id"> +{{ l.ecart.toFixed(0) }}%</span>
+            </template>
+            <template v-else><span class="na">aucune donnée</span></template>
+          </td>
+        </tr>
+        <tr v-if="!lignesPoissons.length">
+          <td colspan="7"><div class="empty">Aucun poisson ne correspond aux filtres.</div></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="legend">
+    💡 Revenus <b>nets de taxe</b> ({{ s.premium?'6,5':'10,5' }}%) pour <b>{{ f.quantite }}</b> poisson(s),
+    coût d'acquisition nul puisque tu les as pêchés.
+    <br>🥩 <b>Morceaux</b> : aucun retour de ressources, les données du jeu excluent explicitement le poisson
+    chez le Boucher. {{ f.quantite }} poissons donnent exactement leur nombre de morceaux.
+    <br>🍲 <b>Plat</b> : le poisson, lui, est rendu chez le Cuisinier, d'où
+    {{ (1/(1-analysePoissons.rrr)).toFixed(2) }} plat(s) par poisson à {{ f.ville }}. Le revenu affiché
+    déduit déjà les autres ingrédients et les frais de station. Le niveau d'enchantement retenu est le
+    plus rentable des quatre.
+    <br>⚠️ Prix retenu = <b>min(prix affiché, prix réellement transigé sur 7 j)</b> moins {{ f.undercut }}%,
+    comme l'onglet Plan. Le pictogramme ⚠️ signale un prix affiché au moins <b>deux fois</b> le prix réel.
+    <br>🕐 Le nombre de poissons cotés <b>bouge d'une heure à l'autre</b> : albion-online-data ne connaît que
+    ce que les joueurs ont scanné récemment. Un relevé à 40 minutes d'écart a donné 36 puis 26 poissons
+    cotés à Martlock. Si une ville paraît vide, rafraîchis, ou compare avec la liste ci-dessus.
+    <br>📅 La colonne en jours dit combien de temps il faut pour écouler la production sans dépasser
+    {{ f.partVolume }}% du volume quotidien. Un revenu qui demande trois semaines n'en est pas vraiment un.
+    <br>❗ Calculé <b>sans culture</b> : les légumes du plat sont achetés, pas cultivés.
+    Le <b>focus</b> suit le réglage du Calculateur ; l'activer change le nombre de plats par poisson et
+    peut renverser le verdict.
+  </p>
+  </template>
   </template>
 </div>
 

@@ -17,6 +17,55 @@ export const NPC_SEED = { 1: 2312, 2: 3468, 3: 5780, 4: 8670, 5: 11560, 6: 17340
 export const RENDER = id => `https://render.albiononline.com/v1/item/${id}.png?quality=1`;
 
 // ---------------------------------------------------------------------------
+//  Étiquettes de contenu
+//
+//  Elles répondent à « que dois-je aller chercher pour fabriquer ça ». Elles
+//  décrivent donc le chemin RÉELLEMENT retenu par le moteur, choix forcés à la
+//  main compris, et non la recette sur le papier : si la sauce de poisson est
+//  moins chère à l'achat qu'à la fabrication, la recette qui en consomme garde
+//  l'étiquette « sauce » mais perd « poisson », « morceaux » et « algues », que
+//  l'on n'a plus besoin de se procurer.
+//
+//  Stockées en masque de bits plutôt qu'en Set : elles remontent le long de
+//  chaque arbre de recette, à chaque recalcul, pour 423 recettes. Un entier
+//  n'alloue rien et se teste d'un ET binaire.
+// ---------------------------------------------------------------------------
+export const ETIQUETTES = [
+  { cle: 'poisson',  icone: '🐟', label: 'Poisson entier',      test: id => /^T[0-9]+_FISH_/.test(id) },
+  { cle: 'sauce',    icone: '🫙', label: 'Sauce de poisson',    test: id => /FISHSAUCE/.test(id) },
+  { cle: 'morceaux', icone: '🥩', label: 'Morceaux de poisson', test: id => /FISHCHOPS/.test(id) },
+  { cle: 'viande',   icone: '🥓', label: "Viande d'élevage",    test: id => /^T[0-9]+_MEAT$/.test(id) },
+  { cle: 'extrait',  icone: '🧪', label: 'Extrait arcanique',   test: id => /EXTRACT/.test(id) },
+  // Le motif est ancré : /SEAWEED/ tout court attraperait aussi la salade
+  // d'algues, qui est un plat et non un ingrédient.
+  { cle: 'algues',   icone: '🌊', label: 'Algues',              test: id => /^T[0-9]+_SEAWEED$/.test(id) },
+  { cle: 'token',    icone: '🪙', label: "Token d'Avalon",      test: id => /TOKEN/.test(id) },
+  // Posée par la méthode choisie (culture) et non par un identifiant.
+  { cle: 'ferme',    icone: '🌱', label: 'Passe par la ferme',  test: null },
+];
+
+export const BIT = {};
+ETIQUETTES.forEach((e, i) => BIT[e.cle] = 1 << i);
+
+const cacheBits = new Map();
+
+// Étiquettes portées par un identifiant lui-même, hors de tout contexte.
+export function bitsDe(id) {
+  let b = cacheBits.get(id);
+  if (b === undefined) {
+    b = 0;
+    for (const e of ETIQUETTES) if (e.test && e.test(id)) b |= BIT[e.cle];
+    cacheBits.set(id, b);
+  }
+  return b;
+}
+
+// Les clés des étiquettes présentes dans un masque, dans l'ordre d'affichage.
+export function clesDe(bits) {
+  return ETIQUETTES.filter(e => bits & BIT[e.cle]).map(e => e.cle);
+}
+
+// ---------------------------------------------------------------------------
 //  Le contexte attendu par toutes les fonctions ci-dessous :
 //
 //  ctx = {
@@ -72,8 +121,12 @@ export function rrrFor(station, ctx) {
 // Le facteur de calibration absorbe l'incertitude sur l'unite du champ, qui ne
 // peut se trancher qu'en relevant le cout reel en jeu. Les recettes T1 et T2 ont
 // une nutrition nulle, ce qui reproduit d'office l'ancienne regle « tier > 2 ».
-export function fraisStation(r, ctx) {
-  return (r.nutrition || 0) * (ctx.stationFee / 100) * (ctx.facteurNutrition ?? 1);
+//
+// Prend une VARIANTE et non une recette : la nutrition est portee par la facon
+// de fabriquer. Pour les objets a variante unique, variantesDe() renvoie la
+// recette elle-meme et les deux reviennent au meme.
+export function fraisStation(v, ctx) {
+  return (v.nutrition || 0) * (ctx.stationFee / 100) * (ctx.facteurNutrition ?? 1);
 }
 
 function npcSeedPrice(tier, ctx) {
@@ -104,25 +157,50 @@ export function growCost(id, ctx) {
   const seedReturn = (f.seedReturn || 0) + (ctx.focus ? (f.nurtureBonus || 0) : 0);
   const netSeeds = Math.max(0, 1 - seedReturn);
   const cost = seed.price * netSeeds / cropYield;
-  return { method: 'grow', cost, where: netSeeds <= 0 ? 'cultivé focus ~gratuit' : seed.where };
+  return { method: 'grow', cost, where: netSeeds <= 0 ? 'cultivé focus ~gratuit' : seed.where, tags: BIT.ferme };
+}
+
+// Les façons de fabriquer un objet. La quasi-totalité n'en a qu'une, et le
+// champ `variants` n'existe que pour les deux qui en ont plusieurs : les
+// morceaux de poisson (41 poissons possibles, de 1 morceau pour un gardon
+// rouge T1 à 200 pour un requin) et les restes d'animaux rares (5, 10 ou 25
+// selon le tier de la dépouille). Une variante porte sa PROPRE quantité
+// produite, sa propre nutrition et ses propres exclusions : c'est elle qu'il
+// faut lire, et non la recette, partout où ces trois champs interviennent.
+export function variantesDe(r) {
+  return r.variants || [r];
 }
 
 // Coût d'une unité fabriquée, récursivement sur les sous-ingrédients.
-// `seen` coupe les cycles de recettes.
+// `seen` coupe les cycles de recettes. Quand plusieurs variantes existent on
+// retient la moins chère : faire ses morceaux avec un crabe mantou (30 d'un
+// coup) n'a rien à voir avec les faire avec un gardon rouge (1 seul).
 export function craftCost(id, seen, ctx) {
   const r = ctx.byId[id];
   if (!r || seen.has(id)) return null;
   const s2 = new Set(seen); s2.add(id);
   const rrr = rrrFor(r.station, ctx);
-  let mat = 0;
-  for (const ing of r.ingredients) {
-    const c = unitCost(ing.id, s2, ctx);
-    if (c == null) return null;   // un ingrédient sans prix => coût inconnu
-    const excluded = (r.excludeFromRRR || []).includes(ing.id);
-    mat += c.cost * ing.quantity * (excluded ? 1 : (1 - rrr));
+  let best = null;
+  for (const v of variantesDe(r)) {
+    let mat = 0, costable = true, tags = 0;
+    for (const ing of v.ingredients) {
+      const c = unitCost(ing.id, s2, ctx);
+      if (c == null) { costable = false; break; }   // ingrédient sans prix
+      const excluded = (v.excludeFromRRR || []).includes(ing.id);
+      mat += c.cost * ing.quantity * (excluded ? 1 : (1 - rrr));
+      // L'ingrédient porte toujours sa propre étiquette, quelle que soit la
+      // façon de l'obtenir ; celles de SON arbre ne remontent que si on le
+      // fabrique, puisque l'acheter dispense d'aller chercher ses composants.
+      tags |= bitsDe(ing.id) | (c.tags || 0);
+    }
+    if (!costable) continue;                        // variante inchiffrable
+    const fee = fraisStation(v, ctx);
+    const cost = (mat + fee) / v.quantity;
+    if (best == null || cost < best.cost) {
+      best = { method: 'craft', cost, perCraft: mat + fee, fee, rrr, variant: v, quantity: v.quantity, tags };
+    }
   }
-  const fee = fraisStation(r, ctx);
-  return { method: 'craft', cost: (mat + fee) / r.quantity, perCraft: mat + fee, fee, rrr };
+  return best;   // null si aucune variante n'est chiffrable
 }
 
 export function methodsFor(id, seen, ctx) {
@@ -132,7 +210,7 @@ export function methodsFor(id, seen, ctx) {
   const g = growCost(id, ctx);
   if (g) opts.push(g);                       // porte déjà son propre `where`
   const c = craftCost(id, seen, ctx);
-  if (c) opts.push({ method: 'craft', cost: c.cost, where: null });
+  if (c) opts.push({ method: 'craft', cost: c.cost, where: null, tags: c.tags });
   return opts;
 }
 
@@ -149,30 +227,53 @@ export function unitCost(id, seen, ctx) {
 // ---------------------------------------------------------------------------
 export function decomposer(r, ctx, methodOverride = {}) {
   const rrr = rrrFor(r.station, ctx);
-  let mat = 0, costable = true;
-  const breakdown = r.ingredients.map(ing => {
-    const options = methodsFor(ing.id, new Set([r.id]), ctx);
-    const cheapest = options.length ? options.reduce((a, b) => b.cost < a.cost ? b : a) : null;
-    const ov = methodOverride[r.id + '|' + ing.id];
-    const forced = ov ? options.find(o => o.method === ov) : null;
-    const chosenOpt = forced || cheapest;
-    const excluded = (r.excludeFromRRR || []).includes(ing.id);
-    if (chosenOpt == null) costable = false;
-    else mat += chosenOpt.cost * ing.quantity * (excluded ? 1 : (1 - rrr));
+
+  // Une variante à la fois, on garde la moins chère. `quantity` et `variant`
+  // sont remontés parce que l'appelant ne peut plus se fier à r.quantity : la
+  // variante retenue pour les morceaux de poisson en produit de 1 à 200.
+  const evaluer = v => {
+    let mat = 0, costable = true, tags = 0;
+    const breakdown = v.ingredients.map(ing => {
+      const options = methodsFor(ing.id, new Set([r.id]), ctx);
+      const cheapest = options.length ? options.reduce((a, b) => b.cost < a.cost ? b : a) : null;
+      const ov = methodOverride[r.id + '|' + ing.id];
+      const forced = ov ? options.find(o => o.method === ov) : null;
+      const chosenOpt = forced || cheapest;
+      const excluded = (v.excludeFromRRR || []).includes(ing.id);
+      if (chosenOpt == null) costable = false;
+      else {
+        mat += chosenOpt.cost * ing.quantity * (excluded ? 1 : (1 - rrr));
+        // Suit le choix forcé quand il y en a un : décocher une étiquette doit
+        // écarter la recette d'après le chemin que l'utilisateur a imposé.
+        tags |= bitsDe(ing.id) | (chosenOpt.tags || 0);
+      }
+      return {
+        id: ing.id, qty: ing.quantity, excluded,
+        options: options.map(o => ({ method: o.method, cost: o.cost, where: o.where })),
+        chosen: chosenOpt ? chosenOpt.method : null,
+        chosenCost: chosenOpt ? chosenOpt.cost : null,
+        chosenWhere: chosenOpt ? chosenOpt.where : null,
+        overridden: !!forced,
+      };
+    });
+    const fee = fraisStation(v, ctx);
+    const craftPerCraft = costable ? mat + fee : null;
     return {
-      id: ing.id, qty: ing.quantity, excluded,
-      options: options.map(o => ({ method: o.method, cost: o.cost, where: o.where })),
-      chosen: chosenOpt ? chosenOpt.method : null,
-      chosenCost: chosenOpt ? chosenOpt.cost : null,
-      chosenWhere: chosenOpt ? chosenOpt.where : null,
-      overridden: !!forced,
+      breakdown, rrr, stationFee: fee,
+      craftCost: craftPerCraft,
+      cost: craftPerCraft != null ? craftPerCraft / v.quantity : null,
+      quantity: v.quantity, variant: v, tags,
     };
-  });
-  const fee = fraisStation(r, ctx);
-  const craftPerCraft = costable ? mat + fee : null;
-  return {
-    breakdown, rrr, stationFee: fee,
-    craftCost: craftPerCraft,
-    cost: craftPerCraft != null ? craftPerCraft / r.quantity : null,
   };
+
+  const variantes = variantesDe(r);
+  // Repli sur la première : si aucune n'est chiffrable, l'interface a quand
+  // même besoin d'un détail à afficher pour permettre la saisie manuelle.
+  let best = evaluer(variantes[0]);
+  for (let i = 1; i < variantes.length; i++) {
+    const cand = evaluer(variantes[i]);
+    if (cand.cost == null) continue;
+    if (best.cost == null || cand.cost < best.cost) best = cand;
+  }
+  return best;
 }

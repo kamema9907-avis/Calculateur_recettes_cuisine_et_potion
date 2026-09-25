@@ -70,16 +70,9 @@ function tierDe(id) {
 }
 
 // --- Conversion vers le format attendu par le front ----------------------------
-// base/ groupe les variantes d'une meme recette sous un seul identifiant. Le
-// raffinage en a deux (avec ou sans jeton de faction) ; on garde la principale,
-// qui est exactement celle que l'ancienne source fournissait.
-function slimRecipe(l) {
-  const r = l.recettes[0];
+// base/ groupe sous un seul identifiant toutes les facons de fabriquer un objet.
+function slimVariante(r) {
   return {
-    id: l.id,
-    station: l.station,
-    tier: l.tier,
-    enchantment: l.enchantement,
     quantity: r.quantiteProduite,
     // Nutrition CONSOMMEE par la fabrication, qui sert aux frais de station.
     // Ne pas prendre l.nutrition : c'est ce que l'objet APPORTE quand on le
@@ -99,6 +92,28 @@ function slimRecipe(l) {
   };
 }
 
+// Deux objets du jeu se fabriquent a partir de sources interchangeables :
+//   - T1_FISHCHOPS, 41 variantes (1 morceau pour un gardon rouge T1, 200 pour
+//     un requin), toutes au Boucher ;
+//   - T1_ALCHEMY_COMMON, 21 variantes (5, 10 ou 25 restes selon le tier de la
+//     depouille).
+// Ce script n'en gardait que la premiere, si bien que le moteur ne connaissait
+// que la source la moins rentable des 41 et ratait les bonnes. On expose
+// desormais la liste complete dans `variants`, et `quantity`/`ingredients`
+// restent ceux de la premiere variante pour ne rien casser chez les
+// consommateurs qui les lisent directement.
+function slimRecipe(l) {
+  const out = {
+    id: l.id,
+    station: l.station,
+    tier: l.tier,
+    enchantment: l.enchantement,
+    ...slimVariante(l.recettes[0]),
+  };
+  if (l.recettes.length > 1) out.variants = l.recettes.map(slimVariante);
+  return out;
+}
+
 // --- Fermeture des dependances -------------------------------------------------
 // Depart : recettes cook + alch. On descend dans chaque ingredient :
 //   - s'il est craftable (recette connue) -> on l'inclut et on continue
@@ -113,11 +128,17 @@ const includedRecipes = {};        // id -> recette (cibles + sous-recettes)
 const referencedItems = new Set(); // tous les ids a nommer
 const usedFarm = {};               // produit -> culture utilisee
 
+// Toutes les variantes comptent : ne descendre que dans la premiere laisserait
+// hors du fichier les 16 poissons communs, qui ne servent qu'a faire des
+// morceaux et n'apparaissent dans aucune autre recette. Sans prix pour eux,
+// l'onglet Poissons n'aurait rien a comparer.
+const ingredientsDe = l => l.recettes.flatMap(v => v.ingredients);
+
 const stack = [];
 for (const l of targets) {
   includedRecipes[l.id] = slimRecipe(l);
   referencedItems.add(l.id);
-  for (const ing of l.recettes[0].ingredients) stack.push(ing.id);
+  for (const ing of ingredientsDe(l)) stack.push(ing.id);
 }
 
 const visited = new Set();
@@ -138,7 +159,7 @@ while (stack.length) {
   const l = ligneParId[id];
   if (l && !includedRecipes[id]) {
     includedRecipes[id] = slimRecipe(l);
-    for (const ing of l.recettes[0].ingredients) stack.push(ing.id);
+    for (const ing of ingredientsDe(l)) stack.push(ing.id);
   }
 }
 
